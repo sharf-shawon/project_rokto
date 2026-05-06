@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+{% load i18n %}
+
+{% block title %}
+  {{ user.username }}
+{% endblock title %}
+{% block css %}
+  {{ block.super }}
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css"
+        rel="stylesheet" />
+  <style>
+    .ts-control {
+      border-radius: 0.375rem !important;
+      padding: 0.375rem 0.75rem !important;
+    }
+  </style>
+{% endblock css %}
+{% block content %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3 border-bottom">
+            <h2 class="mb-0 h4 text-primary">
+              <i class="fas fa-user-edit me-2"></i>{% trans "Update Profile" %}
+            </h2>
+          </div>
+          <div class="card-body p-4">
+            <form class="form-horizontal"
+                  method="post"
+                  action="{% url 'users:update' %}">
+              {% csrf_token %}
+              {{ form|crispy }}
+              <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">{% trans "Save Changes" %}</button>
+                <a href="{{ user.get_absolute_url }}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{ existing_allergies|json_script:"allergy-data" }}
+  {{ existing_conditions|json_script:"condition-data" }}
+{% endblock content %}
+{% block inline_javascript %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const allergyEl = document.getElementById('allergy-data');
+      const conditionEl = document.getElementById('condition-data');
+      const allergyData = allergyEl ? JSON.parse(allergyEl.textContent) : [];
+      const conditionData = conditionEl ? JSON.parse(conditionEl.textContent) : [];
+
+      const commonConfig = {
+        persist: false,
+        createOnBlur: true,
+        create: true,
+        plugins: ['remove_button'],
+        delimiter: ',',
+      };
+
+      const allergySelectEl = document.getElementById('id_allergies');
+      if (allergySelectEl) {
+        new TomSelect("#id_allergies", {
+          ...commonConfig,
+          options: (allergyData || []).map(item => ({
+            value: item,
+            text: item
+          })),
+        });
+      }
+
+      const conditionSelectEl = document.getElementById('id_health_conditions');
+      if (conditionSelectEl) {
+        new TomSelect("#id_health_conditions", {
+          ...commonConfig,
+          options: (conditionData || []).map(item => ({
+            value: item,
+            text: item
+          })),
+        });
+      }
+
+      const locationSelectEl = document.getElementById('id_preferred_locations');
+      if (locationSelectEl) {
+        new TomSelect("#id_preferred_locations", {
+          valueField: 'id',
+          labelField: 'full_address',
+          searchField: ['area_name', 'station', 'district', 'post_code', 'division'],
+          options: [],
+          create: false,
+          plugins: ['remove_button'],
+          load: function(query, callback) {
+            if (!query.length) return callback();
+            const url = "{% url 'locations:location-list' %}?q=" + encodeURIComponent(query);
+            fetch(url)
+              .then(response => response.json())
+              .then(json => {
+                callback(json);
+              }).catch(() => {
+                callback();
+              });
+          },
+          onItemAdd: function() {
+            this.setTextboxValue('');
+            this.refreshOptions();
+          },
+          render: {
+            option: function(item, escape) {
+              const area = escape(item.area_name || '');
+              const station = escape(item.station || '');
+              const district = escape(item.district || '');
+              const post_code = escape(item.post_code || '');
+              const division = escape(item.division || '');
+
+              if (!area) return `<div class="py-2">${escape(item.text || '...')}</div>`;
+
+              return `<div class="py-2">
+                <div class="fw-bold">${area}</div>
+                <div class="small text-muted">${station}, ${district} (${post_code}) [${division}]</div>
+              </div>`;
+            },
+            item: function(item, escape) {
+              return `<div>${escape(item.full_address || item.text)}</div>`;
+            }
+          },
+        });
+      }
+    });
+  </script>
+{% endblock inline_javascript %}

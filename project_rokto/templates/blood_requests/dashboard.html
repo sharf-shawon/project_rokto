@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Blood Request Dashboard" %}
+{% endblock title %}
+{% block content %}
+  <div class="container py-5">
+    <div class="row">
+      <div class="col-12 mb-4">
+        <h2 class="h3 fw-bold text-primary">{% trans "Blood Request Dashboard" %}</h2>
+        <p class="text-muted">{% trans "Track your sent and received requests securely." %}</p>
+      </div>
+    </div>
+    <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active"
+                id="pills-sent-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-sent"
+                type="button"
+                role="tab">
+          <i class="fas fa-paper-plane me-2"></i>{% trans "Requests I Sent" %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link"
+                id="pills-received-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-received"
+                type="button"
+                role="tab">
+          <i class="fas fa-inbox me-2"></i>{% trans "Requests I Received" %}
+        </button>
+      </li>
+    </ul>
+    <div class="tab-content" id="pills-tabContent">
+      <!-- Sent Requests -->
+      <div class="tab-pane fade show active" id="pills-sent" role="tabpanel">
+        <div id="sent-list" class="row g-4">
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Received Requests -->
+      <div class="tab-pane fade" id="pills-received" role="tabpanel">
+        <div id="received-list" class="row g-4">
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% csrf_token %}
+{% endblock content %}
+{% block inline_javascript %}
+  {{ block.super }}
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const sentList = document.getElementById('sent-list');
+      const receivedList = document.getElementById('received-list');
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      function fetchSent() {
+        fetch('{% url "api:requests-sent-requests" %}')
+          .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+          })
+          .then(data => {
+            try {
+              renderSent(data);
+            } catch (err) {
+              console.error('Error rendering sent requests:', err);
+              sentList.innerHTML = '<div class="col-12 text-center py-5 text-danger">{% trans "Error displaying sent requests." %}</div>';
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching sent requests:', err);
+            sentList.innerHTML = '<div class="col-12 text-center py-5 text-danger">{% trans "Error loading sent requests." %}</div>';
+          });
+      }
+
+      function fetchReceived() {
+        fetch('{% url "api:requests-received-requests" %}')
+          .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+          })
+          .then(data => {
+            try {
+              renderReceived(data);
+            } catch (err) {
+              console.error('Error rendering received requests:', err);
+              receivedList.innerHTML = '<div class="col-12 text-center py-5 text-danger">{% trans "Error displaying received requests." %}</div>';
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching received requests:', err);
+            receivedList.innerHTML = '<div class="col-12 text-center py-5 text-danger">{% trans "Error loading received requests." %}</div>';
+          });
+      }
+
+      function renderSent(data) {
+        if (!data.length) {
+          sentList.innerHTML = `<div class="col-12 text-center py-5 text-muted">{% trans "You haven't sent any requests yet." %}</div>`;
+          return;
+        }
+        sentList.innerHTML = data.map(req => {
+          const createdAt = req.created_at ? new Date(req.created_at).toLocaleDateString() : '';
+          return `
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">${req.hospital}</h5>
+                                <span class="text-muted small">${createdAt}</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger cancel-btn" data-id="${req.id}">
+                                <i class="fas fa-trash-alt me-1"></i>{% trans "Cancel Request" %}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3"><strong>{% trans "Reason" %}:</strong> ${req.reason}</p>
+                        <div class="row row-cols-1 row-cols-md-3 g-3">
+                            ${req.donors.map(d => renderDonorCard(d, 'seeker')).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+      }
+
+      function renderReceived(data) {
+        if (!data.length) {
+          receivedList.innerHTML = `<div class="col-12 text-center py-5 text-muted">{% trans "You haven't received any requests yet." %}</div>`;
+          return;
+        }
+        receivedList.innerHTML = data.map(entry => {
+          let actionsSection = '';
+          if (entry.response_status === 'PENDING') {
+            actionsSection = `
+                <div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-success btn-sm flex-grow-1 accept-btn" data-id="${entry.id}">
+                        <i class="fas fa-check me-2"></i>{% trans "Accept" %}
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm flex-grow-1 decline-btn" data-id="${entry.id}">
+                        <i class="fas fa-times me-2"></i>{% trans "Decline" %}
+                    </button>
+                </div>
+            `;
+          }
+
+          return `
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h5 class="mb-0 text-primary">${entry.blood_request ? entry.blood_request.hospital : 'Hospital'}</h5>
+                                <span class="badge ${getStatusClass(entry.response_status)} mt-2">${entry.response_status}</span>
+                            </div>
+                        </div>
+                        <p class="small mb-2"><strong>{% trans "Seeker" %}:</strong> ${entry.seeker_name || entry.seeker_username}</p>
+                        ${renderDonorCard(entry, 'donor')}
+                        ${actionsSection}
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+      }
+
+      function renderDonorCard(entry, actor) {
+        const isAccepted = entry.response_status === 'ACCEPTED';
+        const phone = entry.phone_number;
+        const accessedAt = actor === 'seeker' ? entry.donor_contact_accessed_at : entry.seeker_contact_accessed_at;
+
+        let contactSection = '';
+        if (isAccepted) {
+          if (phone) {
+            const accessedAtStr = accessedAt ? new Date(accessedAt).toLocaleString() : '{% trans "Recently" %}';
+            contactSection = `
+                    <div class="mt-3 p-2 bg-light rounded text-center">
+                        <i class="fas fa-phone-alt me-2 text-success"></i>
+                        <span class="fw-bold">${phone}</span>
+                        <div class="text-muted extra-small mt-1">{% trans "Accessed on" %} ${accessedAtStr}</div>
+                    </div>
+                `;
+          } else {
+            contactSection = `
+                    <div class="mt-3 d-grid">
+                        <button class="btn btn-outline-success btn-sm reveal-btn" data-id="${entry.id}" data-actor="${actor}">
+                            <i class="fas fa-eye me-2"></i>{% trans "Reveal Contact Number" %}
+                        </button>
+                    </div>
+                `;
+          }
+        }
+
+        let confirmationSection = '';
+        if (entry.can_confirm) {
+          const alreadyConfirmed = actor === 'seeker' ? entry.seeker_confirmation !== 'PENDING' : entry.donor_confirmation !== 'PENDING';
+          const confStatus = actor === 'seeker' ? entry.seeker_confirmation : entry.donor_confirmation;
+          const confAt = actor === 'seeker' ? entry.seeker_confirmation_at : entry.donor_confirmation_at;
+          const otherConfStatus = actor === 'seeker' ? entry.donor_confirmation : entry.seeker_confirmation;
+          const otherConfAt = actor === 'seeker' ? entry.donor_confirmation_at : entry.seeker_confirmation_at;
+
+          if (!alreadyConfirmed) {
+            confirmationSection = `
+                    <div class="mt-3">
+                        <div class="small text-muted mb-2">{% trans "Did the donation happen?" %}</div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success btn-sm flex-grow-1 confirm-btn" data-id="${entry.id}" data-value="YES">
+                                <i class="fas fa-check me-1"></i>{% trans "Yes" %}
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm flex-grow-1 confirm-btn" data-id="${entry.id}" data-value="NO">
+                                <i class="fas fa-times me-1"></i>{% trans "No" %}
+                            </button>
+                        </div>
+                    </div>
+                `;
+          } else {
+            const confAtStr = confAt ? new Date(confAt).toLocaleString() : '';
+            confirmationSection = `
+                    <div class="mt-3 p-2 border-top">
+                        <div class="extra-small text-muted text-uppercase fw-bold">{% trans "Your Confirmation" %}</div>
+                        <div class="fw-bold ${confStatus === 'YES' ? 'text-success' : 'text-danger'}">${confStatus}</div>
+                        <div class="text-muted extra-small">${confAtStr}</div>
+                    </div>
+                `;
+          }
+
+          if (otherConfStatus !== 'PENDING') {
+            const otherConfAtStr = otherConfAt ? new Date(otherConfAt).toLocaleString() : '';
+            confirmationSection += `
+                    <div class="mt-2 p-2 border-top">
+                        <div class="extra-small text-muted text-uppercase fw-bold">${actor === 'seeker' ? '{% trans "Donor Confirmation" %}' : '{% trans "Seeker Confirmation" %}'}</div>
+                        <div class="fw-bold ${otherConfStatus === 'YES' ? 'text-success' : 'text-danger'}">${otherConfStatus}</div>
+                        <div class="text-muted extra-small">${otherConfAtStr}</div>
+                    </div>
+                `;
+          }
+        }
+
+        const fullyConfirmedBadge = entry.is_fully_confirmed ? `
+            <div class="mt-2 text-center">
+                <span class="badge bg-primary w-100">
+                    <i class="fas fa-check-double me-1"></i>{% trans "Fully Confirmed" %}
+                </span>
+            </div>
+        ` : '';
+
+        const name = actor === 'seeker' ? (entry.donor_name || entry.donor_username) : (entry.seeker_name || entry.seeker_username);
+
+        return `
+            <div class="col">
+                <div class="p-3 border rounded h-100 bg-white">
+                    <div class="fw-bold text-truncate">${name}</div>
+                    <span class="badge ${getStatusClass(entry.response_status)} small">${entry.response_status}</span>
+                    ${fullyConfirmedBadge}
+                    ${contactSection}
+                    ${confirmationSection}
+                </div>
+            </div>
+        `;
+      }
+
+      function getStatusClass(status) {
+        switch (status) {
+          case 'ACCEPTED':
+            return 'bg-success';
+          case 'DECLINED':
+            return 'bg-danger';
+          default:
+            return 'bg-warning text-dark';
+        }
+      }
+
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+        const actor = btn.dataset.actor;
+
+        if (btn.classList.contains('reveal-btn')) {
+          fetch(`/api/requests/${id}/reveal_contact/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              },
+              body: JSON.stringify({
+                actor: actor
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.phone_number) {
+                fetchSent();
+                fetchReceived();
+              } else {
+                alert(data.detail || '{% trans "Error revealing contact." %}');
+              }
+            });
+        } else if (btn.classList.contains('accept-btn')) {
+          fetch(`/api/requests/${id}/accept_request/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              }
+            })
+            .then(res => {
+              if (res.ok) {
+                fetchReceived();
+              } else {
+                alert('{% trans "Error accepting request." %}');
+              }
+            });
+        } else if (btn.classList.contains('decline-btn')) {
+          fetch(`/api/requests/${id}/decline_request/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              }
+            })
+            .then(res => {
+              if (res.ok) {
+                fetchReceived();
+              } else {
+                alert('{% trans "Error declining request." %}');
+              }
+            });
+        } else if (btn.classList.contains('cancel-btn')) {
+          if (confirm('{% trans "Are you sure you want to cancel this request?" %}')) {
+            fetch(`/api/requests/${id}/cancel_request/`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken
+                }
+              })
+              .then(res => {
+                if (res.ok) {
+                  fetchSent();
+                } else {
+                  alert('{% trans "Error cancelling request." %}');
+                }
+              });
+          }
+        } else if (btn.classList.contains('confirm-btn')) {
+          const value = btn.dataset.value;
+          const url = `/api/requests/${id}/confirm_donation/`;
+          const payload = {
+            confirmation: value
+          };
+          console.log('Confirming donation:', {
+            url,
+            payload
+          });
+          fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              },
+              body: JSON.stringify(payload)
+            })
+            .then(res => {
+              if (res.ok) {
+                fetchSent();
+                fetchReceived();
+              } else {
+                return res.json().then(data => {
+                  alert(data.detail || '{% trans "Error confirming donation." %}');
+                }).catch(() => {
+                  alert('{% trans "Error confirming donation." %}');
+                });
+              }
+            });
+        }
+      });
+
+      fetchSent();
+      fetchReceived();
+    });
+  </script>
+  <style>
+    .extra-small {
+      font-size: 0.75rem;
+    }
+  </style>
+{% endblock inline_javascript %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+{% load i18n %}
+
+{% block title %}
+  {% trans "Manage Phone Number" %}
+{% endblock title %}
+{% block content %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3 border-bottom">
+            <h2 class="mb-0 h4 text-primary">
+              <i class="fas fa-phone me-2"></i>{% trans "Phone Number Management" %}
+            </h2>
+          </div>
+          <div class="card-body p-4">
+            <div class="mb-4">
+              <h5 class="text-muted border-bottom pb-2">{% trans "Current Phone Number" %}</h5>
+              {% if user.phone_number %}
+                <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                  <div>
+                    <span class="h5 mb-0">{{ user.phone_number }}</span>
+                    {% if user.is_phone_verified %}
+                      <span class="badge bg-success ms-2"><i class="fas fa-check-circle me-1"></i>{% trans "Verified" %}</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark ms-2"><i class="fas fa-exclamation-triangle me-1"></i>{% trans "Unverified" %}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <div class="alert alert-info">{% trans "No phone number linked to your account." %}</div>
+              {% endif %}
+            </div>
+            {% if user.is_phone_verified and user.nid_verification.status == 'VERIFIED' %}
+              <div class="alert alert-success d-flex align-items-center mb-4">
+                <i class="fas fa-check-double fa-2x me-3"></i>
+                <div>
+                  <h6 class="mb-1">{% trans "You are fully verified!" %}</h6>
+                  <p class="mb-0 small">{% trans "You can now send and receive blood donation requests." %}</p>
+                </div>
+                <a href="{% url 'home' %}" class="btn btn-success btn-sm ms-auto">{% trans "Go to Homepage" %}</a>
+              </div>
+            {% endif %}
+            <div class="mt-4">
+              <h5 class="text-muted border-bottom pb-2">{% trans "Add / Update Phone Number" %}</h5>
+              <p class="small text-muted mb-3">
+                {% trans "Enter a new phone number below. We will send a verification code to this number. Your current number will only be replaced after successful verification." %}
+              </p>
+              <form method="post" action="{% url 'users:phone_add' %}">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary">
+                    {% if user.phone_number %}
+                      {% trans "Change Phone Number" %}
+                    {% else %}
+                      {% trans "Add Phone Number" %}
+                    {% endif %}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
