@@ -67,11 +67,11 @@ graph TD
     C --> D[Real-time Notifications]
     D --> E[SMS / Email / WebPush]
     E --> F{Donor Response}
-    F -- Accepted --> G[Secure Contact Exchange]
-    F -- Declined --> H[Next Best Match]
+    F -- Donor Accepted --> G[Secure Contact Exchange]
+    F -- Donor Declined --> H[Next Best Match] --> C
     G --> I[Confirm Donation]
-    J --> K[Update Both Profiles]
-    K --> L[Donor Cooling-off Period Starts]
+    I --> J[Update Both Profiles]
+    J --> K[Donor Cooling-off Period Starts]
 ```
 
 ---
