@@ -2,7 +2,10 @@
 
 [English README](./README.md)
 
+![Project Rokto Banner](project_rokto/static/images/banner.png)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+
+[![CI](https://github.com/sharf-shawon/project_rokto/actions/workflows/ci.yml/badge.svg)](https://github.com/sharf-shawon/project_rokto/actions/workflows/ci.yml)
 [![Django 6.0](https://img.shields.io/badge/Django-6.0-092e20.svg?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Built by Community](https://img.shields.io/badge/Built%20by-Community-green.svg)](#join-the-mission)
