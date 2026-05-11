@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+{% load i18n %}
+
+{% block title %}
+  {% trans "Submit NID" %}
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card mt-5">
+          <div class="card-body">
+            <h2 class="card-title text-center">{% trans "Account Verification" %}</h2>
+            {% if nid %}
+              {% if nid.status == 'PENDING' %}
+                <div class="alert alert-info text-center">
+                  <i class="fas fa-clock fa-3x mb-3"></i>
+                  <h4>{% trans "Verification in Progress" %}</h4>
+                  <p>
+                    {% trans "Your NID documents have been submitted and are currently under review. Please wait while our team verifies your information." %}
+                  </p>
+                  <p class="mb-0 small text-muted">{% trans "Submitted on:" %} {{ nid.updated_at|date:"F j, Y, g:i a" }}</p>
+                </div>
+              {% elif nid.status == 'REJECTED' %}
+                <div class="alert alert-danger">
+                  <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                  <h4>{% trans "Verification Rejected" %}</h4>
+                  <p>
+                    <strong>{% trans "Reason:" %}</strong> {{ nid.rejection_reason|default:_("No reason provided.") }}
+                  </p>
+                  <hr />
+                  <p class="mb-0">
+                    {% trans "Attempts remaining:" %} <strong>{{ attempts_left }}</strong>
+                  </p>
+                </div>
+              {% elif nid.status == 'VERIFIED' %}
+                <div class="alert alert-success text-center">
+                  <i class="fas fa-check-circle fa-3x mb-3"></i>
+                  <h4>{% trans "Account Verified" %}</h4>
+                  <p>{% trans "Your identity has been successfully verified. You now have full access to all features." %}</p>
+                  <a href="{% url 'home' %}" class="btn btn-success mt-3">{% trans "Go to Homepage" %}</a>
+                </div>
+              {% endif %}
+            {% endif %}
+            {% if not nid or nid.status == 'REJECTED' %}
+              {% if attempts_left > 0 %}
+                <p class="text-center text-danger">
+                  <strong>{% trans "NID Verification is Mandatory" %}</strong>
+                </p>
+                <p class="text-muted text-center">
+                  {% trans "To keep our community safe, we require all users to verify their identity with a National ID Card." %}
+                </p>
+                <hr />
+                <form method="post" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="row">
+                    <div class="col-md-6">{{ form.front_image|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.back_image|as_crispy_field }}</div>
+                  </div>
+                  <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-success btn-lg">{% trans "Upload Documents" %}</button>
+                  </div>
+                </form>
+              {% else %}
+                <div class="alert alert-warning text-center">
+                  <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                  <h4>{% trans "Maximum Attempts Reached" %}</h4>
+                  <p>
+                    {% blocktrans %}You have reached the maximum number of NID verification attempts ({{ max_attempts }}). Please contact support for assistance.{% endblocktrans %}
+                  </p>
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

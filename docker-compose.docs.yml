@@ -1,0 +1,17 @@
+services:
+  docs:
+    image: project_rokto_local_docs
+    container_name: project_rokto_local_docs
+    build:
+      context: .
+      dockerfile: ./compose/local/docs/Dockerfile
+    env_file:
+      - ./.envs/.local/.django
+    volumes:
+      - /app/.venv
+      - ./docs:/docs:z
+      - ./config:/app/config:z
+      - ./project_rokto:/app/project_rokto:z
+    ports:
+      - '9000:9000'
+    command: /start-docs

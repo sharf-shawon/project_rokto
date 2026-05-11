@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Home" %}
+{% endblock title %}
+{% block css %}
+  {{ block.super }}
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css"
+        rel="stylesheet" />
+  <style>
+    .hero-section {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      padding: 100px 0;
+      border-radius: 0 0 2rem 2rem;
+    }
+
+    .search-card {
+      margin-top: -50px;
+      z-index: 10;
+    }
+
+    .ts-control {
+      border-radius: 0.375rem !important;
+      padding: 0.75rem 1rem !important;
+      font-size: 1rem;
+    }
+
+    .donor-card {
+      transition: transform 0.2s;
+    }
+
+    .donor-card:hover {
+      transform: translateY(-5px);
+    }
+
+    #search-results-container,
+    #search-loading,
+    #search-empty {
+      display: none;
+    }
+  </style>
+{% endblock css %}
+{% block content %}
+  <!-- Hero Section -->
+  <section class="hero-section text-center">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <h1 class="display-4 fw-bold text-primary mb-3">{% trans "Life-Saving Connections Start Here" %}</h1>
+          <p class="lead text-muted mb-5">
+            {% trans "Project Rokto is a privacy-first, automated blood donor search engine. We help you find verified donors in your immediate neighborhood when every second counts." %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Search Interface -->
+  <div class="container mb-5">
+    {% csrf_token %}
+    <div class="row justify-content-center">
+      <div class="col-lg-10 search-card">
+        <div class="card shadow-lg border-0 rounded-3">
+          <div class="card-body p-4 p-md-5">
+            <h3 class="h4 mb-4 text-center">{% trans "Find Compatible Donors Near You" %}</h3>
+            <form id="donor-search-form" class="row g-3">
+              <div class="col-md-4">
+                <label for="blood-group-select"
+                       class="form-label small text-muted text-uppercase fw-bold">
+                  {% trans "Required Blood Type" %}
+                </label>
+                <select id="blood-group-select" class="form-select form-select-lg" required>
+                  <option value="" disabled selected>{% trans "Select Blood Group" %}</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="location-select"
+                       class="form-label small text-muted text-uppercase fw-bold">
+                  {% trans "Donation Location" %}
+                </label>
+                <select id="location-select"
+                        placeholder="{% trans 'Search city, area or postcode...' %}"
+                        required></select>
+              </div>
+              <div class="col-md-2 d-grid">
+                <label class="form-label d-none d-md-block opacity-0">.</label>
+                <button type="submit" class="btn btn-primary btn-lg">
+                  <i class="fas fa-search me-2"></i>{% trans "Search" %}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Results Section -->
+    <div id="search-results-container" class="mt-5">
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <h4 class="mb-0">{% trans "Closest Compatible Donors" %}</h4>
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-light text-dark border"><span id="results-count">0</span> {% trans "matches found" %}</span>
+          <button id="request-blood-btn"
+                  class="btn btn-success d-none"
+                  data-bs-toggle="modal"
+                  data-bs-target="#requestModal">
+            <i class="fas fa-paper-plane me-2"></i>{% trans "Request Blood" %} (<span id="selected-count">0</span>)
+          </button>
+        </div>
+      </div>
+      <div id="results-list"
+           class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <!-- Results will be injected here -->
+      </div>
+    </div>
+    <!-- Request Modal -->
+    <div class="modal fade"
+         id="requestModal"
+         tabindex="-1"
+         aria-labelledby="requestModalLabel"
+         aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="requestModalLabel">{% trans "Send Blood Donation Request" %}</h5>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+          </div>
+          <form id="blood-request-form">
+            <div class="modal-body p-4">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                {% trans "You have selected" %} <strong id="modal-selected-count">0</strong> {% trans "donor(s). We will notify them via Email and SMS." %}
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">{% trans "Proposed Donation Date" %}</label>
+                  <input type="date"
+                         name="donation_date"
+                         class="form-control"
+                         required
+                         min="{{ today|date:'Y-m-d' }}" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">{% trans "Bags Needed" %}</label>
+                  <input type="number"
+                         name="bags_needed"
+                         class="form-control"
+                         value="1"
+                         min="1"
+                         required />
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-bold">{% trans "Hospital / Location" %}</label>
+                  <input type="text"
+                         name="hospital"
+                         class="form-control"
+                         placeholder="{% trans 'e.g. Dhaka Medical College' %}"
+                         required />
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-bold">{% trans "Reason for Request" %}</label>
+                  <textarea name="reason"
+                            class="form-control"
+                            rows="3"
+                            placeholder="{% trans 'Provide details about the emergency/situation...' %}"
+                            required></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+              <button type="submit" class="btn btn-primary px-4">{% trans "Send Request" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- Loading State -->
+    <div id="search-loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">{% trans "Searching our verified donor network..." %}</p>
+    </div>
+    <!-- Empty State -->
+    <div id="search-empty" class="text-center py-5">
+      <i class="fas fa-search fa-3x text-muted mb-3"></i>
+      <h5>{% trans "No donors found in this area" %}</h5>
+      <p class="text-muted">{% trans "Try searching in a nearby area or a different blood group." %}</p>
+    </div>
+  </div>
+{% endblock content %}
+{% block inline_javascript %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const resultsContainer = document.getElementById('search-results-container');
+      const resultsList = document.getElementById('results-list');
+      const loadingState = document.getElementById('search-loading');
+      const emptyState = document.getElementById('search-empty');
+      const countLabel = document.getElementById('results-count');
+      const requestBtn = document.getElementById('request-blood-btn');
+      const selectedCountLabel = document.getElementById('selected-count');
+      const modalSelectedCount = document.getElementById('modal-selected-count');
+      const requestForm = document.getElementById('blood-request-form');
+
+      let requestModal = null;
+      if (window.bootstrap && window.bootstrap.Modal) {
+        requestModal = new window.bootstrap.Modal(document.getElementById('requestModal'));
+      }
+
+      let selectedDonors = [];
+
+      function showToast(message, type = "info") {
+        let backgroundColor = "#0d6efd"; // primary
+        if (type === "success") backgroundColor = "#198754";
+        if (type === "warning") backgroundColor = "#ffc107";
+        if (type === "error") backgroundColor = "#dc3545";
+
+        Toastify({
+          text: message,
+          duration: 6000,
+          close: true,
+          gravity: "top",
+          position: "right",
+          stopOnFocus: true,
+          escapeMarkup: false,
+          style: {
+            background: backgroundColor,
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+          }
+        }).showToast();
+      }
+
+      // 1. Initialize Tom Select for Location
+      const locationSelect = new TomSelect("#location-select", {
+        valueField: 'id',
+        labelField: 'full_address',
+        searchField: ['area_name', 'station', 'district', 'post_code', 'division'],
+        options: [],
+        create: false,
+        maxItems: 1,
+        load: function(query, callback) {
+          if (!query.length) return callback();
+          const url = "{% url 'locations:location-list' %}?q=" + encodeURIComponent(query);
+          fetch(url)
+            .then(response => response.json())
+            .then(json => callback(json))
+            .catch(() => callback());
+        },
+        render: {
+          option: function(item, escape) {
+            return `<div class="py-2">
+              <div class="fw-bold">${escape(item.area_name)}</div>
+              <div class="small text-muted">${escape(item.station)}, ${escape(item.district)} (${escape(item.post_code)})</div>
+            </div>`;
+          },
+          item: function(item, escape) {
+            return `<div>${escape(item.full_address)}</div>`;
+          }
+        },
+      });
+
+      function savePendingRequest() {
+        const formData = new FormData(requestForm);
+        const state = {
+          search: {
+            blood_group: document.getElementById('blood-group-select').value,
+            location_id: locationSelect.getValue()
+          },
+          request: {
+            reason: formData.get('reason'),
+            bags_needed: formData.get('bags_needed'),
+            donation_date: formData.get('donation_date'),
+            hospital: formData.get('hospital')
+          },
+          donors: selectedDonors
+        };
+        localStorage.setItem('pending_rokto_request', JSON.stringify(state));
+      }
+
+      function loadPendingRequest() {
+        const saved = localStorage.getItem('pending_rokto_request');
+        if (!saved) return;
+
+        const state = JSON.parse(saved);
+
+        document.getElementById('blood-group-select').value = state.search.blood_group;
+        if (state.search.location_id) {
+          // Setting value in TomSelect requires the option to exist
+          // Since we can't easily rebuild the option from just an ID without an extra fetch,
+          // we'll just check if it matches. For a robust solution, we'd fetch the location name.
+          performSearch(state.search.blood_group, state.search.location_id, (data) => {
+            state.donors.forEach(id => {
+              const cb = document.querySelector(`.donor-checkbox[data-id="${id}"]`);
+              if (cb) {
+                cb.checked = true;
+                selectedDonors.push(id.toString());
+              }
+            });
+            updateRequestUI();
+
+            Object.keys(state.request).forEach(key => {
+              const input = requestForm.querySelector(`[name="${key}"]`);
+              if (input) input.value = state.request[key];
+            });
+
+            if (requestModal) {
+              requestModal.show();
+              const toastDiv = document.createElement('div');
+              toastDiv.className = 'alert alert-warning mt-3';
+              toastDiv.innerHTML = '<i class="fas fa-history me-2"></i>{% trans "We restored your draft request. Please login and verify to send." %}';
+              requestForm.querySelector('.modal-body').prepend(toastDiv);
+            }
+          });
+        }
+      }
+
+      function setupSelectionHandlers() {
+        const checkboxes = document.querySelectorAll('.donor-checkbox');
+        checkboxes.forEach(cb => {
+          cb.addEventListener('change', function() {
+            const donorId = this.dataset.id;
+
+            if (this.checked) {
+              if (selectedDonors.length >= 3) {
+                this.checked = false;
+                showToast('{% trans "You can select up to 3 donors at a time." %}', "warning");
+                return;
+              }
+              selectedDonors.push(donorId);
+            } else {
+              selectedDonors = selectedDonors.filter(id => id !== donorId);
+            }
+
+            updateRequestUI();
+          });
+        });
+      }
+
+      function updateRequestUI() {
+        const count = selectedDonors.length;
+        selectedCountLabel.textContent = count;
+        modalSelectedCount.textContent = count;
+
+        if (count > 0) {
+          requestBtn.classList.remove('d-none');
+        } else {
+          requestBtn.classList.add('d-none');
+        }
+      }
+
+      function performSearch(bloodGroup, locationId, callback = null, lat = null, lng = null) {
+        resultsContainer.style.display = 'none';
+        emptyState.style.display = 'none';
+        loadingState.style.display = 'block';
+        resultsList.innerHTML = '';
+
+        let url = `/api/donors/?blood_group=${encodeURIComponent(bloodGroup)}&location_id=${locationId}`;
+        if (lat && lng) {
+          url += `&lat=${lat}&lng=${lng}`;
+        }
+
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            loadingState.style.display = 'none';
+
+            if (data && data.length > 0) {
+              resultsContainer.style.display = 'block';
+              countLabel.textContent = data.length;
+
+              data.forEach(donor => {
+                const distanceText = donor.distance_km != null ?
+                  `~${donor.distance_km.toFixed(1)} km away` :
+                  '{% trans "Nearby" %}';
+
+                const card = `
+                  <div class="col">
+                    <div class="card h-100 border-0 shadow-sm donor-card">
+                      <div class="card-body p-4">
+                        <div class="d-flex align-items-start justify-content-between mb-3">
+                          <div class="d-flex align-items-center">
+                            <div class="bg-danger text-white rounded p-2 me-3 text-center" style="width: 45px;">
+                              <span class="fw-bold">${donor.blood_group}</span>
+                            </div>
+                            <div>
+                              <h5 class="mb-0 text-truncate" style="max-width: 120px;">${donor.name || donor.username}</h5>
+                              <small class="text-primary fw-medium">${distanceText}</small>
+                            </div>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input donor-checkbox" type="checkbox" value="${donor.id}" data-id="${donor.id}" id="check-${donor.id}" />
+                          </div>
+                        </div>
+                        <div class="small text-muted mb-3">
+                          <i class="fas fa-map-marker-alt me-1"></i>
+                          ${donor.preferred_locations.map(l => l.area_name).join(', ') || '{% trans "Verified Area" %}'}
+                        </div>
+                        <div class="d-grid">
+                          <button class="btn btn-outline-primary btn-sm" disabled>
+                            <i class="fas fa-lock me-1"></i>{% trans "Contact via Project Rokto" %}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                resultsList.insertAdjacentHTML('beforeend', card);
+              });
+
+              setupSelectionHandlers();
+              if (callback) callback(data);
+            } else {
+              emptyState.style.display = 'block';
+              if (callback) callback([]);
+            }
+          })
+          .catch(error => {
+            console.error('Search failed:', error);
+            loadingState.style.display = 'none';
+          });
+      }
+
+      // Handle Blood Request Submission
+      requestForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const payload = {
+          reason: formData.get('reason'),
+          bags_needed: parseInt(formData.get('bags_needed')),
+          donation_date: formData.get('donation_date'),
+          hospital: formData.get('hospital'),
+          donor_ids: selectedDonors
+        };
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "api:requests-list" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(payload)
+          })
+          .then(response => {
+            if (response.ok) {
+              showToast('{% trans "Request sent successfully! Selected donors have been notified." %}', "success");
+              if (requestModal) requestModal.hide();
+              requestForm.reset();
+              selectedDonors = [];
+              updateRequestUI();
+              localStorage.removeItem('pending_rokto_request');
+              document.querySelectorAll('.donor-checkbox').forEach(cb => cb.checked = false);
+            } else if (response.status === 401 || response.status === 403) {
+              savePendingRequest();
+              const verifyUrl = '{% url "users:redirect" %}';
+              const message = '{% trans "Please verify your account to send requests." %}';
+              const link = `<a href="${verifyUrl}" class="text-white border-bottom border-white fw-bold ms-2" style="text-decoration: none;">{% trans "Verify Now" %}</a>`;
+              showToast(message + link, "warning");
+            } else {
+              return response.json().then(err => {
+                const msg = err.detail || err.non_field_errors || '{% trans "Failed to send request." %}';
+                const verifyUrl = '{% url "users:redirect" %}';
+                if (msg.toString().toLowerCase().includes('verify')) {
+                  const link = `<a href="${verifyUrl}" class="text-white border-bottom border-white fw-bold ms-2" style="text-decoration: none;">{% trans "Verify Now" %}</a>`;
+                  throw new Error(msg + link);
+                }
+                throw new Error(msg);
+              });
+            }
+          })
+          .catch(error => {
+            showToast(error.message, "error");
+          });
+      });
+      const searchForm = document.getElementById('donor-search-form');
+      searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const bloodGroup = document.getElementById('blood-group-select').value;
+        const locationId = locationSelect.getValue();
+        if (!bloodGroup || !locationId) return;
+
+        if (navigator.geolocation) {
+          // Add a temporary loading state for geolocation
+          showToast('{% trans "Getting your precise location for better sorting..." %}', "info");
+
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              performSearch(bloodGroup, locationId, null, position.coords.latitude, position.coords.longitude);
+            },
+            (error) => {
+              console.warn("Geolocation failed:", error);
+              performSearch(bloodGroup, locationId);
+            }, {
+              timeout: 5000
+            }
+          );
+        } else {
+          performSearch(bloodGroup, locationId);
+        }
+      });
+
+      // Initialize
+      setTimeout(loadPendingRequest, 500);
+    });
+  </script>
+{% endblock inline_javascript %}
