@@ -1,8 +1,11 @@
+import uuid
+
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 
 
 class Location(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     post_code = models.CharField(_("Post Code"), max_length=10)
     area_name = models.CharField(_("Area Name"), max_length=100)
     station = models.CharField(_("Station/Upazila"), max_length=100)

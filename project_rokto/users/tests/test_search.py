@@ -148,7 +148,7 @@ def test_donor_search_availability_gate(client):
     assert response.status_code == HTTPStatus.OK
     results = response.json()
     assert len(results) == 1
-    assert results[0]["id"] == u5.id
+    assert results[0]["id"] == str(u5.id)
 
     # Check phone obfuscation
     assert results[0]["username"] != u5.username

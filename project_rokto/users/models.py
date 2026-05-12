@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from django.apps import apps
 from django.contrib.auth.models import AbstractUser
@@ -61,6 +62,7 @@ class User(AbstractUser):
     check forms.SignupForm and forms.SocialSignupForms accordingly.
     """
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     MAX_VERIFICATION_ATTEMPTS = 3
 
     class BloodGroup(models.TextChoices):
@@ -93,8 +95,6 @@ class User(AbstractUser):
 
     # First and last name do not cover name patterns around the globe
     name = CharField(_("Name of User"), blank=True, max_length=255)
-    first_name = None  # type: ignore[assignment]
-    last_name = None  # type: ignore[assignment]
 
     objects = CustomUserManager()  # type: ignore[misc]
 
@@ -192,6 +192,7 @@ class User(AbstractUser):
 
 
 class OTPRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     phone_number = CharField(max_length=15, validators=[phone_validator])
     otp_code = CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -215,6 +216,7 @@ class NIDVerification(models.Model):
         VERIFIED = "VERIFIED", _("Verified")
         REJECTED = "REJECTED", _("Rejected")
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,

@@ -1,4 +1,5 @@
 import contextlib
+import uuid
 
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
@@ -30,7 +31,7 @@ class UserViewSet(RetrieveModelMixin, ListModelMixin, UpdateModelMixin, GenericV
     lookup_field = "username"
 
     def get_queryset(self, *args, **kwargs):
-        assert isinstance(self.request.user.id, int)
+        assert isinstance(self.request.user.id, uuid.UUID)
         return self.queryset.filter(id=self.request.user.id)
 
     @action(detail=False)

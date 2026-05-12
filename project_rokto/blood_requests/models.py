@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class BloodRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     seeker = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

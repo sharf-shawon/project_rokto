@@ -2,7 +2,7 @@ import csv
 import io
 import zipfile
 
-import requests  # type: ignore[import-untyped]
+import requests
 from django.contrib.gis.geos import Point
 from django.core.management.base import BaseCommand
 from geopy.geocoders import ArcGIS
