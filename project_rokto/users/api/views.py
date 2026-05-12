@@ -59,13 +59,16 @@ class DonorSearchViewSet(ReadOnlyModelViewSet):
         if blood_group:
             # Use compatibility matrix to find all potential donors
             compatible_groups = User.get_compatible_donors(blood_group)
-            queryset = queryset.filter(blood_group__in=compatible_groups).annotate(
+            queryset = queryset.filter(
+                donor_profile__blood_group__in=compatible_groups
+            ).annotate(
                 compatibility_score=Case(
-                    When(blood_group=blood_group, then=Value(1)),
+                    When(donor_profile__blood_group=blood_group, then=Value(1)),
                     default=Value(2),
                     output_field=IntegerField(),
                 ),
             )
+
         else:
             queryset = queryset.annotate(
                 compatibility_score=Value(100, output_field=IntegerField()),
@@ -78,7 +81,9 @@ class DonorSearchViewSet(ReadOnlyModelViewSet):
 
         # Apply location filter if provided
         if location_id:
-            queryset = queryset.filter(preferred_locations__id=location_id)
+            queryset = queryset.filter(
+                donor_profile__preferred_locations__id=location_id
+            )
 
         # Fallback to location's point if lat/lng not provided
         if not target_point and location_id:
@@ -92,7 +97,7 @@ class DonorSearchViewSet(ReadOnlyModelViewSet):
             queryset = (
                 queryset.annotate(
                     distance=Distance(
-                        "preferred_locations__point",
+                        "donor_profile__preferred_locations__point",
                         target_point,
                     ),
                 )

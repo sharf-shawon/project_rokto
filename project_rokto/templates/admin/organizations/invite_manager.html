@@ -1,0 +1,49 @@
+{% extends "unfold/layouts/base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+  <div class="px-4 py-8 md:px-8">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold">{% trans "Invite Manager" %}</h1>
+      <p class="text-gray-500">{% trans "Invite a verified user to manage selected organizations." %}</p>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 gap-6 max-w-xl">
+        <div class="flex flex-col gap-2">
+          <label class="font-medium text-sm">{% trans "Selected Organizations" %}</label>
+          <div class="p-3 bg-gray-50 rounded border border-gray-200 text-sm">
+            {% for org in queryset %}<div class="font-bold">{{ org.name }}</div>{% endfor %}
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="username" class="font-medium text-sm">{% trans "Username or Phone Number" %}</label>
+          <input type="text"
+                 name="username"
+                 id="username"
+                 class="p-2 border border-gray-300 rounded focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                 required />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="role" class="font-medium text-sm">{% trans "Role" %}</label>
+          <select name="role"
+                  id="role"
+                  class="p-2 border border-gray-300 rounded focus:border-primary-500 outline-none">
+            <option value="MANAGER">{% trans "Manager" %}</option>
+            <option value="ADMIN">{% trans "Admin" %}</option>
+          </select>
+        </div>
+        <div class="flex gap-4 mt-4">
+          <button type="submit"
+                  name="apply"
+                  class="px-6 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 font-medium">
+            {% trans "Send Invitation" %}
+          </button>
+          <a href="../"
+             class="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50 font-medium">{% trans "Cancel" %}</a>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock content %}

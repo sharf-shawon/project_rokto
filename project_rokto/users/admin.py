@@ -7,7 +7,7 @@ from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm
 
 # Apply Unfold theme to third-party models
-from . import admin_unfold  # noqa: F401
+from .admin_unfold import admin_site
 from .forms import UserAdminChangeForm
 from .forms import UserAdminCreationForm
 from .models import NIDVerification
@@ -21,7 +21,7 @@ if settings.DJANGO_ADMIN_FORCE_ALLAUTH:
     admin.site.login = secure_admin_login(admin.site.login)  # type: ignore[method-assign]
 
 
-@admin.register(User)
+@admin.register(User, site=admin_site)
 class UserAdmin(auth_admin.UserAdmin, ModelAdmin):
     form = UserAdminChangeForm
     add_form = UserAdminCreationForm
@@ -56,14 +56,14 @@ class UserAdmin(auth_admin.UserAdmin, ModelAdmin):
     search_fields = ["name", "phone_number", "username"]
 
 
-@admin.register(OTPRequest)
+@admin.register(OTPRequest, site=admin_site)
 class OTPRequestAdmin(ModelAdmin):
     list_display = ["phone_number", "otp_code", "created_at", "expires_at", "is_used"]
     search_fields = ["phone_number"]
     readonly_fields = ["created_at"]
 
 
-@admin.register(NIDVerification)
+@admin.register(NIDVerification, site=admin_site)
 class NIDVerificationAdmin(ModelAdmin):
     list_display = ["user", "status", "created_at", "updated_at"]
     list_filter = ["status"]

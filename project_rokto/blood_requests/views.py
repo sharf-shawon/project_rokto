@@ -193,12 +193,15 @@ class BloodRequestViewSet(viewsets.ModelViewSet):
 
         # Only update donor's last donation date if BOTH confirmed YES
         if entry.is_fully_confirmed:
-            donor = entry.donor
+            donor_profile = entry.donor.donor_profile
             request_date = entry.blood_request.donation_date
 
-            if not donor.last_donation_date or request_date >= donor.last_donation_date:
-                donor.last_donation_date = request_date
-                donor.save()
+            if (
+                not donor_profile.last_donation_date
+                or request_date >= donor_profile.last_donation_date
+            ):
+                donor_profile.last_donation_date = request_date
+                donor_profile.save()
 
         return Response(
             {
@@ -323,12 +326,15 @@ def confirm_donation_view(request, token, actor, status_type):
 
     # Only update donor's last donation date if BOTH confirmed YES
     if entry.is_fully_confirmed:
-        donor = entry.donor
+        donor_profile = entry.donor.donor_profile
         request_date = entry.blood_request.donation_date
 
-        if not donor.last_donation_date or request_date >= donor.last_donation_date:
-            donor.last_donation_date = request_date
-            donor.save()
+        if (
+            not donor_profile.last_donation_date
+            or request_date >= donor_profile.last_donation_date
+        ):
+            donor_profile.last_donation_date = request_date
+            donor_profile.save()
 
     message = _("Thank you for your confirmation. We have updated our records.")
     return render(request, "blood_requests/response_confirm.html", {"message": message})

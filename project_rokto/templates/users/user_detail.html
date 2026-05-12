@@ -23,10 +23,10 @@
                   <p class="mb-0 opacity-75 small">@{{ object.username }}</p>
                 </div>
               </div>
-              {% if object.blood_group %}
+              {% if object.donor_profile.blood_group %}
                 <div class="bg-danger text-white rounded px-3 py-2 text-center">
                   <div class="small text-uppercase opacity-75">{% trans "Blood" %}</div>
-                  <div class="h3 mb-0 fw-bold">{{ object.blood_group }}</div>
+                  <div class="h3 mb-0 fw-bold">{{ object.donor_profile.blood_group }}</div>
                 </div>
               {% endif %}
             </div>
@@ -47,7 +47,7 @@
                   </li>
                   <li class="mb-2">
                     <i class="fas fa-calendar-alt me-2 text-primary"></i>
-                    <strong>{% trans "Date of Birth" %}:</strong> {{ object.date_of_birth|default:_("Not provided") }}
+                    <strong>{% trans "Date of Birth" %}:</strong> {{ object.donor_profile.date_of_birth|default:_("Not provided") }}
                   </li>
                   <li class="mb-2">
                     <i class="fas fa-check-circle me-2 {% if object.is_verified %}text-success{% else %}text-muted{% endif %}"></i>
@@ -70,23 +70,23 @@
                   <div class="d-flex align-items-center mb-2">
                     <i class="fas fa-heartbeat me-2 text-danger"></i>
                     <strong>{% trans "Status" %}:</strong>
-                    {% if object.is_available_to_donate %}
+                    {% if object.donor_profile.is_available_to_donate %}
                       <span class="badge bg-success ms-2">{% trans "Ready to Donate" %}</span>
                     {% else %}
                       <span class="badge bg-warning text-dark ms-2">{% trans "Not Available" %}</span>
                     {% endif %}
                   </div>
-                  {% if not object.is_available_to_donate and object.resume_donation_date %}
+                  {% if not object.donor_profile.is_available_to_donate and object.donor_profile.resume_donation_date %}
                     <p class="small text-muted mb-0">
                       <i class="fas fa-clock me-1"></i>
-                      {% trans "Expected resume date" %}: {{ object.resume_donation_date }}
+                      {% trans "Expected resume date" %}: {{ object.donor_profile.resume_donation_date }}
                     </p>
                   {% endif %}
                 </div>
                 <ul class="list-unstyled mb-0">
                   <li class="mb-2">
                     <i class="fas fa-history me-2 text-primary"></i>
-                    <strong>{% trans "Last Donation" %}:</strong> {{ object.last_donation_date|default:_("Never") }}
+                    <strong>{% trans "Last Donation" %}:</strong> {{ object.donor_profile.last_donation_date|default:_("Never") }}
                   </li>
                   <li class="mb-2">
                     <i class="fas fa-hand-holding-heart me-2 text-success"></i>
@@ -100,7 +100,7 @@
                     <i class="fas fa-map-marker-alt me-2 text-primary"></i>
                     <strong>{% trans "Preferred Locations" %}:</strong>
                     <div class="mt-2">
-                      {% for location in object.preferred_locations.all %}
+                      {% for location in object.donor_profile.preferred_locations.all %}
                         <span class="badge border border-primary text-primary fw-normal mb-1 me-1">
                           {{ location.area_name }}, {{ location.station }}
                         </span>
@@ -118,8 +118,8 @@
                   <div class="col-md-6 mb-3 mb-md-0">
                     <label class="small text-uppercase fw-bold text-muted d-block mb-1">{% trans "Known Conditions" %}</label>
                     <div class="p-3 bg-light rounded">
-                      {% if object.health_conditions %}
-                        {% for condition in object.health_conditions %}
+                      {% if object.donor_profile.health_conditions %}
+                        {% for condition in object.donor_profile.health_conditions %}
                           <span class="badge bg-info text-dark me-1 mb-1">{{ condition }}</span>
                         {% endfor %}
                       {% else %}
@@ -130,8 +130,8 @@
                   <div class="col-md-6">
                     <label class="small text-uppercase fw-bold text-muted d-block mb-1">{% trans "Allergies" %}</label>
                     <div class="p-3 bg-light rounded">
-                      {% if object.allergies %}
-                        {% for allergy in object.allergies %}
+                      {% if object.donor_profile.allergies %}
+                        {% for allergy in object.donor_profile.allergies %}
                           <span class="badge bg-warning text-dark me-1 mb-1">{{ allergy }}</span>
                         {% endfor %}
                       {% else %}

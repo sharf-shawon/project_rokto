@@ -64,10 +64,12 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         existing_conditions = set()
 
         for user in User.objects.all():
-            if user.allergies:
-                existing_allergies.update(user.allergies)
-            if user.health_conditions:
-                existing_conditions.update(user.health_conditions)
+            donor = getattr(user, "donor_profile", None)
+            if donor:
+                if donor.allergies:
+                    existing_allergies.update(donor.allergies)
+                if donor.health_conditions:
+                    existing_conditions.update(donor.health_conditions)
 
         context["existing_allergies"] = sorted(existing_allergies)
         context["existing_conditions"] = sorted(existing_conditions)

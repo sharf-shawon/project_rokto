@@ -88,15 +88,15 @@ def test_full_confirmation_required_for_profile_update(client):
     url = reverse("api:requests-confirm-donation", kwargs={"pk": entry.pk})
     client.post(url, {"confirmation": "YES"}, content_type="application/json")
 
-    donor.refresh_from_db()
-    assert donor.last_donation_date is None  # Not yet fully confirmed
+    donor.donor_profile.refresh_from_db()
+    assert donor.donor_profile.last_donation_date is None  # Not yet fully confirmed
 
     # Donor confirms YES
     client.force_login(donor)
     client.post(url, {"confirmation": "YES"}, content_type="application/json")
 
-    donor.refresh_from_db()
-    assert donor.last_donation_date == request_date  # Now fully confirmed
+    donor.donor_profile.refresh_from_db()
+    assert donor.donor_profile.last_donation_date == request_date  # Now fully confirmed
 
 
 def test_user_confirmed_stats(client):

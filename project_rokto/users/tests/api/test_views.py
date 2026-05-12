@@ -39,7 +39,7 @@ class TestUserViewSet:
             "url": f"http://testserver/api/users/{user.username}/",
             "name": user.name,
             "phone_number": user.phone_number,
-            "blood_group": user.blood_group,
-            "is_available_to_donate": user.is_available_to_donate,
+            "blood_group": user.donor_profile.blood_group,
+            "is_available_to_donate": user.donor_profile.is_available_to_donate,
             "preferred_locations": [],
         }

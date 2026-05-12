@@ -57,6 +57,16 @@ ROOT_URLCONF = "config.urls"
 # https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
 WSGI_APPLICATION = "config.wsgi.application"
 
+# UNFOLD
+# ------------------------------------------------------------------------------
+UNFOLD = {
+    "SITE_TITLE": "Project Rokto Admin",
+    "SITE_HEADER": "Project Rokto",
+    "SITE_SYMBOL": "bloodtype",  # Material Symbols
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+}
+
 # APPS
 # ------------------------------------------------------------------------------
 UNFOLD_APPS = [
@@ -92,6 +102,7 @@ THIRD_PARTY_APPS = [
     "allauth.account",
     "allauth.mfa",
     "allauth.socialaccount",
+    "import_export",
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
@@ -103,6 +114,8 @@ LOCAL_APPS = [
     "project_rokto.users",
     "project_rokto.locations",
     "project_rokto.blood_requests",
+    "project_rokto.donors",
+    "project_rokto.organizations",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -162,6 +175,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "project_rokto.organizations.middleware.OrgManagerMFAMiddleware",
     "project_rokto.users.middleware.VerificationMiddleware",
 ]
 

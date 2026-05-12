@@ -4,7 +4,6 @@ import uuid
 from django.apps import apps
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager
-from django.contrib.postgres.fields import ArrayField
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import CharField
@@ -12,8 +11,6 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-from project_rokto.locations.models import Location
 
 phone_validator = RegexValidator(
     regex=r"^(?:\+88|88)?(01[3-9]\d{8})$",
@@ -37,16 +34,16 @@ class UserQuerySet(models.QuerySet):
 
         return (
             self.filter(
-                is_available_to_donate=True,
+                donor_profile__is_available_to_donate=True,
                 nid_verification__status=NIDVerification.Status.VERIFIED,
             )
             .filter(
-                Q(resume_donation_date__isnull=True)
-                | Q(resume_donation_date__lte=today),
+                Q(donor_profile__resume_donation_date__isnull=True)
+                | Q(donor_profile__resume_donation_date__lte=today),
             )
             .filter(
-                Q(last_donation_date__isnull=True)
-                | Q(last_donation_date__lte=wait_period),
+                Q(donor_profile__last_donation_date__isnull=True)
+                | Q(donor_profile__last_donation_date__lte=wait_period),
             )
         )
 
@@ -64,16 +61,6 @@ class User(AbstractUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     MAX_VERIFICATION_ATTEMPTS = 3
-
-    class BloodGroup(models.TextChoices):
-        A_POSITIVE = "A+", "A+"
-        A_NEGATIVE = "A-", "A-"
-        B_POSITIVE = "B+", "B+"
-        B_NEGATIVE = "B-", "B-"
-        O_POSITIVE = "O+", "O+"
-        O_NEGATIVE = "O-", "O-"
-        AB_POSITIVE = "AB+", "AB+"
-        AB_NEGATIVE = "AB-", "AB-"
 
     @classmethod
     def get_compatible_donors(cls, blood_group: str) -> list[str]:
@@ -110,47 +97,6 @@ class User(AbstractUser):
     verification_attempts = models.PositiveSmallIntegerField(
         _("Verification Attempts"),
         default=0,
-    )
-
-    # Profile fields
-    date_of_birth = models.DateField(_("Date of Birth"), null=True, blank=True)
-    blood_group = CharField(
-        _("Blood Group"),
-        max_length=5,
-        choices=BloodGroup.choices,
-        blank=True,
-    )
-    last_donation_date = models.DateField(
-        _("Last Blood Donation Date"),
-        null=True,
-        blank=True,
-    )
-    allergies = ArrayField(
-        models.CharField(max_length=100),
-        verbose_name=_("Allergies"),
-        default=list,
-        blank=True,
-    )
-    health_conditions = ArrayField(
-        models.CharField(max_length=100),
-        verbose_name=_("Known Health Conditions"),
-        default=list,
-        blank=True,
-    )
-    is_available_to_donate = models.BooleanField(
-        _("Available to Donate"),
-        default=False,
-    )
-    resume_donation_date = models.DateField(
-        _("Date to Resume Donation"),
-        null=True,
-        blank=True,
-    )
-    preferred_locations = models.ManyToManyField(
-        Location,
-        verbose_name=_("Preferred Blood Donation Locations"),
-        blank=True,
-        related_name="interested_donors",
     )
 
     def get_absolute_url(self) -> str:
@@ -190,13 +136,17 @@ class User(AbstractUser):
             donor_confirmation=BloodRequestDonor.DonationConfirmation.YES,
         ).count()
 
+    @property
+    def is_org_manager(self):
+        return self.organization_memberships.exists()
+
 
 class OTPRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     phone_number = CharField(max_length=15, validators=[phone_validator])
     otp_code = CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(null=True, blank=True)
     is_used = models.BooleanField(default=False)
 
     class Meta:
@@ -206,8 +156,13 @@ class OTPRequest(models.Model):
     def __str__(self):
         return f"OTP for {self.phone_number} at {self.created_at}"
 
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + datetime.timedelta(minutes=5)
+        super().save(*args, **kwargs)
+
     def is_valid(self):
-        return not self.is_used and self.expires_at > timezone.now()
+        return not self.is_used and self.expires_at and self.expires_at > timezone.now()
 
 
 class NIDVerification(models.Model):

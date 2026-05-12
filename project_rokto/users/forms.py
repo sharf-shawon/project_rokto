@@ -4,6 +4,7 @@ from django import forms
 from django.contrib.auth import forms as admin_forms
 from django.utils.translation import gettext_lazy as _
 
+from project_rokto.donors.models import Donor
 from project_rokto.locations.models import Location
 
 from .models import NIDVerification
@@ -11,85 +12,102 @@ from .models import User
 from .models import phone_validator
 
 
-class UserAdminChangeForm(admin_forms.UserChangeForm):
-    class Meta(admin_forms.UserChangeForm.Meta):
-        model = User
-        widgets = {
-            "date_of_birth": forms.DateInput(attrs={"type": "date"}),
-            "last_donation_date": forms.DateInput(attrs={"type": "date"}),
-            "resume_donation_date": forms.DateInput(attrs={"type": "date"}),
-        }
-
-
 class UserUpdateForm(forms.ModelForm):
+    # Donor fields
+    blood_group = forms.ChoiceField(
+        choices=Donor.BloodGroup.choices,
+        required=False,
+        label=_("Blood Group"),
+    )
+    date_of_birth = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label=_("Date of Birth"),
+    )
+    last_donation_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label=_("Last Blood Donation Date"),
+    )
+    resume_donation_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label=_("Date to Resume Donation"),
+    )
+    is_available_to_donate = forms.BooleanField(
+        required=False,
+        label=_("Available to Donate"),
+    )
+    allergies = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "tag-input", "placeholder": _("Add allergies...")},
+        ),
+        label=_("Allergies"),
+    )
+    health_conditions = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "tag-input",
+                "placeholder": _("Add health conditions..."),
+            },
+        ),
+        label=_("Known Health Conditions"),
+    )
+    preferred_locations = forms.ModelMultipleChoiceField(
+        queryset=Location.objects.none(),
+        required=False,
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "location-select",
+                "placeholder": _("Add locations..."),
+            },
+        ),
+        label=_("Preferred Blood Donation Locations"),
+    )
+
     class Meta:
         model = User
-        fields = [
-            "name",
-            "date_of_birth",
-            "blood_group",
-            "last_donation_date",
-            "allergies",
-            "health_conditions",
-            "is_available_to_donate",
-            "resume_donation_date",
-            "preferred_locations",
-        ]
-        widgets = {
-            "date_of_birth": forms.DateInput(attrs={"type": "date"}),
-            "last_donation_date": forms.DateInput(attrs={"type": "date"}),
-            "resume_donation_date": forms.DateInput(attrs={"type": "date"}),
-            "allergies": forms.TextInput(
-                attrs={"class": "tag-input", "placeholder": _("Add allergies...")},
-            ),
-            "health_conditions": forms.TextInput(
-                attrs={
-                    "class": "tag-input",
-                    "placeholder": _("Add health conditions..."),
-                },
-            ),
-            "preferred_locations": forms.SelectMultiple(
-                attrs={
-                    "class": "location-select",
-                    "placeholder": _("Add locations..."),
-                },
-            ),
-        }
+        fields = ["name"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            if self.instance.allergies:
-                self.initial["allergies"] = ",".join(self.instance.allergies)
-            if self.instance.health_conditions:
-                self.initial["health_conditions"] = ",".join(
-                    self.instance.health_conditions,
-                )
+            donor = getattr(self.instance, "donor_profile", None)
+            if donor:
+                self.initial["blood_group"] = donor.blood_group
+                self.initial["date_of_birth"] = donor.date_of_birth
+                self.initial["last_donation_date"] = donor.last_donation_date
+                self.initial["resume_donation_date"] = donor.resume_donation_date
+                self.initial["is_available_to_donate"] = donor.is_available_to_donate
+                if donor.allergies:
+                    self.initial["allergies"] = ",".join(donor.allergies)
+                if donor.health_conditions:
+                    self.initial["health_conditions"] = ",".join(
+                        donor.health_conditions,
+                    )
 
-        # Base queryset: already selected locations
-        if self.instance and self.instance.pk:
-            qs = self.instance.preferred_locations.all()
-        else:
-            qs = Location.objects.none()
+                # Base queryset: already selected locations
 
-        # If form is submitted, include newly selected IDs in the queryset
-        # so that Django's validation doesn't reject them
-        if self.is_bound:
-            # self.data is typically a QueryDict which has getlist
-            selected_ids = []
-            if hasattr(self.data, "getlist"):
-                selected_ids = self.data.getlist("preferred_locations")
+                qs = donor.preferred_locations.all()
             else:
-                # Fallback for non-QueryDict mappings
-                val = self.data.get("preferred_locations")
-                if val:
-                    selected_ids = val if isinstance(val, list) else [val]
+                qs = Location.objects.none()
 
-            if selected_ids:
-                # Merge current selection with existing selection
-                qs = (qs | Location.objects.filter(id__in=selected_ids)).distinct()
+            # If form is submitted, include newly selected IDs in the queryset
+            if self.is_bound:
+                if hasattr(self.data, "getlist"):
+                    selected_ids = self.data.getlist("preferred_locations")
+                else:
+                    val = self.data.get("preferred_locations")
+                    selected_ids = (
+                        val if isinstance(val, list) else [val] if val else []
+                    )
 
-        self.fields["preferred_locations"].queryset = qs  # type: ignore[attr-defined]
+                if selected_ids:
+                    qs = (qs | Location.objects.filter(id__in=selected_ids)).distinct()
+
+            self.fields["preferred_locations"].queryset = qs  # type: ignore[attr-defined]
 
     def clean_allergies(self):
         data = self.cleaned_data.get("allergies")
@@ -103,6 +121,28 @@ class UserUpdateForm(forms.ModelForm):
             return [x.strip() for x in data.split(",") if x.strip()]
         return data
 
+    def save(self, commit: bool = True):  # noqa: FBT001, FBT002
+        user = super().save(commit=commit)
+        donor, _ = Donor.objects.get_or_create(user=user)
+
+        donor.blood_group = self.cleaned_data.get("blood_group") or ""
+        donor.date_of_birth = self.cleaned_data.get("date_of_birth")
+        donor.last_donation_date = self.cleaned_data.get("last_donation_date")
+        donor.resume_donation_date = self.cleaned_data.get("resume_donation_date")
+        donor.is_available_to_donate = bool(
+            self.cleaned_data.get("is_available_to_donate")
+        )
+        donor.allergies = self.cleaned_data.get("allergies") or []
+        donor.health_conditions = self.cleaned_data.get("health_conditions") or []
+
+        if commit:
+            donor.save()
+            pref_locations = self.cleaned_data.get("preferred_locations")
+            if pref_locations is not None:
+                donor.preferred_locations.set(pref_locations)
+
+        return user
+
 
 class UserAdminCreationForm(admin_forms.AdminUserCreationForm):
     """
@@ -110,16 +150,21 @@ class UserAdminCreationForm(admin_forms.AdminUserCreationForm):
     To change user signup, see UserSignupForm and UserSocialSignupForm.
     """
 
-    class Meta(admin_forms.UserCreationForm.Meta):
+    class Meta(admin_forms.AdminUserCreationForm.Meta):
         model = User
         error_messages = {
             "username": {"unique": _("This username has already been taken.")},
         }
 
 
+class UserAdminChangeForm(admin_forms.UserChangeForm):
+    class Meta(admin_forms.UserChangeForm.Meta):
+        model = User
+
+
 class UserSignupForm(SignupForm):
     """
-    Form that will be rendered on a user sign up section/screen.
+    Form that will be rendered on a signup page.
     Default fields will be added automatically.
     Check UserSocialSignupForm for accounts created from social.
     """
@@ -137,32 +182,28 @@ class PhoneLoginForm(forms.Form):
     phone_number = forms.CharField(
         max_length=15,
         validators=[phone_validator],
-        widget=forms.TextInput(attrs={"placeholder": "01XXXXXXXXX"}),
-        label=_("Phone Number"),
+        widget=forms.TextInput(
+            attrs={"placeholder": _("Phone Number"), "class": "form-control"},
+        ),
     )
 
 
 class OTPVerifyForm(forms.Form):
     otp_code = forms.CharField(
         max_length=6,
-        min_length=6,
-        widget=forms.TextInput(attrs={"placeholder": "123456"}),
-        label=_("OTP Code"),
+        widget=forms.TextInput(
+            attrs={"placeholder": _("OTP Code"), "class": "form-control"},
+        ),
     )
-
-
-class NIDSubmissionForm(forms.ModelForm):
-    class Meta:
-        model = NIDVerification
-        fields = ["front_image", "back_image"]
 
 
 class PhoneAddForm(forms.Form):
     phone_number = forms.CharField(
         max_length=15,
         validators=[phone_validator],
-        widget=forms.TextInput(attrs={"placeholder": "01XXXXXXXXX"}),
-        label=_("Phone Number"),
+        widget=forms.TextInput(
+            attrs={"placeholder": _("Phone Number"), "class": "form-control"},
+        ),
     )
 
     def __init__(self, *args, **kwargs):
@@ -171,10 +212,10 @@ class PhoneAddForm(forms.Form):
 
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get("phone_number")
-        user_qs = User.objects.filter(phone_number=phone_number)
-        if self.user and self.user.pk:
-            user_qs = user_qs.exclude(pk=self.user.pk)
-        if user_qs.exists():
+        qs = User.objects.filter(phone_number=phone_number)
+        if self.user:
+            qs = qs.exclude(pk=self.user.pk)
+        if qs.exists():
             raise forms.ValidationError(_("This phone number is already in use."))
         return phone_number
 
@@ -183,3 +224,9 @@ class UserInfoForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["name", "email"]
+
+
+class NIDSubmissionForm(forms.ModelForm):
+    class Meta:
+        model = NIDVerification
+        fields = ["front_image", "back_image"]

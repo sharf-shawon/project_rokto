@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import datetime
-
+# mypy: ignore-errors
 from django.contrib.gis.geos import Point
-from django.utils import timezone
 from factory import Faker
 from factory import SubFactory
 from factory import post_generation
 from factory.django import DjangoModelFactory
 from factory.django import ImageField
 
+from project_rokto.donors.models import Donor
 from project_rokto.locations.models import Location
 from project_rokto.users.models import NIDVerification
 from project_rokto.users.models import OTPRequest
@@ -34,8 +33,29 @@ class UserFactory(DjangoModelFactory[User]):
     name = Faker("name")
     phone_number = Faker("numerify", text="017########")
     is_phone_verified = False
-    blood_group = "A+"
-    is_available_to_donate = False
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        # Fields to look for and remove from kwargs
+        donor_fields = [
+            "blood_group",
+            "is_available_to_donate",
+            "last_donation_date",
+            "resume_donation_date",
+            "date_of_birth",
+            "allergies",
+            "health_conditions",
+        ]
+        donor_kwargs = {}
+        for field in donor_fields:
+            if field in kwargs:
+                donor_kwargs[field] = kwargs.pop(field)
+
+        user = super()._create(model_class, *args, **kwargs)
+
+        # We store them on the instance temporarily for post_generation
+        user._donor_kwargs = donor_kwargs  # noqa: SLF001
+        return user
 
     @post_generation
     def password(self: User, create: bool, extracted: str | None, **kwargs):  # noqa: FBT001
@@ -56,31 +76,45 @@ class UserFactory(DjangoModelFactory[User]):
             self.save()
 
     @post_generation
-    def preferred_locations(self, create, extracted, **kwargs):
+    def donor_profile(self, create, extracted, **kwargs):
         if not create:
             return
+
         if extracted:
-            for loc in extracted:
-                self.preferred_locations.add(loc)
+            self.donor_profile = extracted
+            return
+
+        donor_kwargs = getattr(self, "_donor_kwargs", {})
+
+        # Create donor profile if any donor fields were provided or by default
+        Donor.objects.get_or_create(user=self, defaults=donor_kwargs)
+        if hasattr(self, "_donor_kwargs"):
+            delattr(self, "_donor_kwargs")
 
     class Meta:
         model = User
-        django_get_or_create = ["username"]
         skip_postgeneration_save = True
+
+
+class DonorFactory(DjangoModelFactory[Donor]):
+    user = SubFactory("project_rokto.users.tests.factories.UserFactory")
+    blood_group = "A+"
+    is_available_to_donate = False
+
+    class Meta:
+        model = Donor
 
 
 class OTPRequestFactory(DjangoModelFactory[OTPRequest]):
     phone_number = Faker("numerify", text="017########")
     otp_code = Faker("numerify", text="######")
-    expires_at = timezone.now() + datetime.timedelta(minutes=5)
-    is_used = False
 
     class Meta:
         model = OTPRequest
 
 
 class NIDVerificationFactory(DjangoModelFactory[NIDVerification]):
-    user = SubFactory(UserFactory)
+    user = SubFactory("project_rokto.users.tests.factories.UserFactory")
     front_image = ImageField(color="blue")
     back_image = ImageField(color="red")
     status = NIDVerification.Status.PENDING

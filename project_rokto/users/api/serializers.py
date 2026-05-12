@@ -7,7 +7,15 @@ from project_rokto.users.utils import obfuscate_phone_number
 
 
 class UserSerializer(serializers.ModelSerializer[User]):
-    preferred_locations = LocationSerializer(many=True, read_only=True)
+    blood_group = serializers.CharField(
+        source="donor_profile.blood_group", read_only=True
+    )
+    is_available_to_donate = serializers.BooleanField(
+        source="donor_profile.is_available_to_donate", read_only=True
+    )
+    preferred_locations = LocationSerializer(
+        source="donor_profile.preferred_locations", many=True, read_only=True
+    )
 
     class Meta:
         model = User
@@ -28,7 +36,16 @@ class UserSerializer(serializers.ModelSerializer[User]):
 
 class DonorSearchSerializer(serializers.ModelSerializer[User]):
     distance_km = serializers.FloatField(read_only=True)
-    preferred_locations = LocationSerializer(many=True, read_only=True)
+    blood_group = serializers.CharField(
+        source="donor_profile.blood_group", read_only=True
+    )
+    is_available_to_donate = serializers.BooleanField(
+        source="donor_profile.is_available_to_donate", read_only=True
+    )
+    preferred_locations = LocationSerializer(
+        source="donor_profile.preferred_locations", many=True, read_only=True
+    )
+
     username = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
 

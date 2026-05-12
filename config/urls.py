@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import include
 from django.urls import path
 from django.views import defaults as default_views
@@ -8,6 +7,9 @@ from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularSwaggerView
 from rest_framework.authtoken.views import obtain_auth_token
+
+from project_rokto.organizations.admin import org_admin_site
+from project_rokto.users.admin_unfold import admin_site
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -17,9 +19,15 @@ urlpatterns = [
         name="about",
     ),
     # Django Admin, use {% url 'admin:index' %}
-    path(settings.ADMIN_URL, admin.site.urls),
+    path(settings.ADMIN_URL, admin_site.urls),
+    # Organization Admin
+    path("org-admin/", org_admin_site.urls),
     # User management
     path("users/", include("project_rokto.users.urls", namespace="users")),
+    path(
+        "orgs/",
+        include("project_rokto.organizations.urls", namespace="organizations"),
+    ),
     path("locations/", include("project_rokto.locations.urls", namespace="locations")),
     path(
         "requests/",
