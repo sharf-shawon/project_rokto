@@ -27,7 +27,7 @@ dependencies = [
   "django-redis==6.0.0",
   "django-storages[s3]==1.14.6",
   "django-unfold>=0.93.0",
-  "django-webpack-loader==3.2.3",
+  "django-webpack-loader==3.2.4",
   "djangorestframework==3.17.1",
   "drf-spectacular==0.29.0",
   "geopy>=2.4.1",
@@ -37,7 +37,7 @@ dependencies = [
   "psycopg[c]==3.3.4",
   "python-slugify==8.0.4",
   "redis==7.4.0",
-  "requests==2.34.0",
+  "requests==2.34.1",
 ]
 
 [dependency-groups]
@@ -47,7 +47,7 @@ dev = [
   "django-debug-toolbar==6.3.0",
   "django-extensions==4.1",
   "django-stubs[compatible-mypy]==6.0.4",
-  "djangorestframework-stubs==3.16.9",
+  "djangorestframework-stubs==3.17.0",
   "djlint==1.36.4",
   "factory-boy==3.3.3",
   "ipdb==0.13.13",
@@ -57,7 +57,7 @@ dev = [
   "pytest==9.0.3",
   "pytest-django==4.12.0",
   "pytest-sugar==1.1.1",
-  "ruff==0.15.12",
+  "ruff==0.15.13",
   "sphinx==9.1.0",
   "sphinx-autobuild==2025.8.25",
   "types-requests>=2.33.0.20260508",
