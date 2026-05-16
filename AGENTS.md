@@ -50,71 +50,66 @@ Agents MUST:
 
 ## Development Lifecycle (MANDATORY)
 
-All changes MUST follow this full development cycle:
+Project Rokto uses a **Spec-Driven Development** lifecycle powered by OpenSpec (`/opsx:*`). All changes MUST follow these phases:
 
-1. **TRIAGE:**
-   - Restate the task to ensure understanding.
-   - Define scope and identify risks/assumptions.
-   - List impacted files, documentation, and tests.
-2. **CLARIFY:** Ask questions for any ambiguity or risk. No coding until critical clarity is reached.
-3. **PLAN:**
-   - List files to be changed.
-   - Define tests to add/update (ensuring 95%+ coverage).
-   - Sync documentation requirements.
-   - Define validation steps.
-4. **CODE:**
+1. **EXPLORE (`/opsx:explore`)**:
+   - Research the codebase and understand integration points.
+   - Clarify requirements and identify risks/assumptions.
+   - Surface hidden complexity and map dependencies.
+2. **PROPOSE (`/opsx:propose`)**:
+   - Create a formal change proposal (`proposal.md`).
+   - Define technical requirements in specs (`specs/`).
+   - Document the implementation approach (`design.md`).
+   - Break down work into trackable tasks (`tasks.md`).
+3. **APPLY (`/opsx:apply`)**:
+   - Implement tasks sequentially.
    - Match existing patterns and architecture.
-   - Implement minimal, focused changes.
-   - Ensure type annotations are used.
-5. **TEST SYNC:**
+   - Ensure type annotations are used for all new Python code.
+4. **VERIFY (`just check`)**:
    - Add new tests for all behavior changes and edge cases.
-   - Update any stale tests.
    - **Verification:** Run `just test-coverage` and ensure total coverage remains >= 95%.
-6. **DOCS SYNC:** Update all impacted docs, examples, changelogs, and comments to reflect the latest updates.
-7. **VALIDATE:** Run the full quality suite: `just check` (lint → format → type → test → coverage).
-8. **REVIEW:** Perform a self-review as a senior engineer. Verify synchronization and Definition of Done (DoD).
-9. **COMMIT:**
-   - Use brief, clean, and descriptive **Conventional Commits** (e.g., `feat:`, `fix:`, `docs:`, `test:`).
-   - Summarize the changes, tests, and documentation updated.
+   - Ensure `mypy` and linting (`ruff`, `prettier`, `djlint`) pass.
+5. **ARCHIVE (`/opsx:archive`)**:
+   - Finalize the change and merge specs into the main specification database.
+   - Perform a final self-review.
+
+## AI Workflow Commands
+
+- `/opsx:explore <topic>`: Enter thinking mode to analyze problems or code.
+- `/opsx:propose <name>`: Create all artifacts for a new change in one step.
+- `/opsx:apply <name>`: Implement tasks from an active change.
+- `/opsx:archive <name>`: Complete a change and update foundational specs.
 
 ## Quick Start & Resources
 
-### Learning Resources
-
-- [Django Documentation](https://docs.djangoproject.com/en/5.1/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [PostGIS Best Practices](https://postgis.net/workshops/postgis-intro/)
-
-### Basic Setup
+### Environment Setup
 
 ```bash
+# Sync dependencies
+uv sync --locked
+
 # Start local development with Docker
 just up
 
-# Run migrations
+# Run migrations and import data
 just migrate
-
-# Import geographical data
 just manage import_locations
 ```
 
 ### Essential Commands
 
 ```bash
-# RUN THIS BEFORE EVERY PUSH (lint, type-check, test, coverage)
+# RUN THIS BEFORE CONCLUDING ANY TASK (lint, type, test, coverage)
 just check
 
-# Run tests with coverage report
+# Run tests with coverage
 just test-coverage
 
-# Lint & Format (pre-commit)
+# Lint & Format manually
 just lint
 
 # Access Django shell
 just shell
-
-# Create superuser
-just manage createsuperuser
 ```
 
 ## Quality Expectations
