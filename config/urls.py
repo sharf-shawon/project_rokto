@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from django.urls import include
 from django.urls import path
 from django.views import defaults as default_views
@@ -11,7 +12,13 @@ from rest_framework.authtoken.views import obtain_auth_token
 from project_rokto.organizations.admin import org_admin_site
 from project_rokto.users.admin_unfold import admin_site
 
+
+def health(request):
+    return HttpResponse("ok", status=200, content_type="text/plain")
+
+
 urlpatterns = [
+    path("health", health),
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path(
         "about/",

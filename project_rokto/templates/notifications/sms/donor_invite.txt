@@ -1,0 +1,1 @@
+{% load i18n %}{% blocktrans with org_name=organization_name %}You are invited to join {{ org_name }} on Project Rokto. Complete profile: {{ invite_url }}{% endblocktrans %}

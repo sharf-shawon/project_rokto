@@ -85,6 +85,8 @@ class UserFactory(DjangoModelFactory[User]):
             return
 
         donor_kwargs = getattr(self, "_donor_kwargs", {})
+        if "phone_number" not in donor_kwargs:
+            donor_kwargs["phone_number"] = self.phone_number
 
         # Create donor profile if any donor fields were provided or by default
         Donor.objects.get_or_create(user=self, defaults=donor_kwargs)

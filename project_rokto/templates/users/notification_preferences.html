@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+{% load i18n %}
+
+{% block title %}
+  {% trans "Notification Preferences" %}
+{% endblock title %}
+{% block content %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <h2 class="card-title mb-4">{% trans "Notification Preferences" %}</h2>
+            <p class="text-muted mb-4">
+              {% trans "Choose how you want to be notified about important events on Project Rokto." %}
+            </p>
+            <form method="post">
+              {% csrf_token %}
+              <h4 class="h5 mb-3 border-bottom pb-2">{% trans "Channels" %}</h4>
+              <div class="mb-4">
+                {{ form.email_enabled|as_crispy_field }}
+                {{ form.sms_enabled|as_crispy_field }}
+                {{ form.web_push_enabled|as_crispy_field }}
+              </div>
+              <h4 class="h5 mb-3 border-bottom pb-2">{% trans "Alert Types" %}</h4>
+              <div class="mb-4">
+                {{ form.emergency_alerts|as_crispy_field }}
+                {{ form.org_invites|as_crispy_field }}
+                {{ form.reminders|as_crispy_field }}
+              </div>
+              <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'users:detail' request.user.username %}"
+                   class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                <button type="submit" class="btn btn-primary">{% trans "Save Preferences" %}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

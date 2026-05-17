@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
@@ -49,9 +50,11 @@ def test_full_flow_import_invite_signup_quota(client):
     donor1 = Donor.objects.get(phone_number="01711111111")
 
     # 3. Send Invite (within quota)
-    success, reason = send_donor_invite(donor1.id, org.id)
-    assert success is True
-    assert donor1.notification_logs.count() == 1
+    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
+        mock_client.return_value.send_sms.return_value = True
+        success, reason = send_donor_invite(donor1.id, org.id)
+        assert success is True
+        assert donor1.notification_logs.count() == 1
 
     # 4. Attempt second invite (User Cool-off)
     success, reason = send_donor_invite(donor1.id, org.id)

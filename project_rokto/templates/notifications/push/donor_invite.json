@@ -1,0 +1,6 @@
+{% load i18n %}
+{
+    "title": "{% trans 'Organization Invitation' %}",
+    "body": "{% blocktrans with org_name=organization_name %}You are invited to join {{ org_name }}{% endblocktrans %}",
+    "url": "{{ invite_url }}"
+}

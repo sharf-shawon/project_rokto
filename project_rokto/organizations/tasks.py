@@ -1,12 +1,44 @@
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+
+from config import celery_app
 from project_rokto.donors.models import Donor
-from project_rokto.organizations.models import NotificationQuota
-from project_rokto.organizations.models import Organization
-from project_rokto.organizations.services import QuotaService
+
+from .models import Organization
+from .services import EmailService
+from .services import NotificationDispatcher
+from .services import SMSService
+from .services import WebPushService
+
+User = get_user_model()
 
 
-def send_donor_invite(donor_id, organization_id, channel=NotificationQuota.Channel.SMS):
+@celery_app.task
+def send_email_task(user_id, template_name, context, donor_id=None):
+    user = User.objects.get(pk=user_id)
+    donor = Donor.objects.get(pk=donor_id) if donor_id else None
+    EmailService.send(user, template_name, context, donor=donor)
+
+
+@celery_app.task
+def send_sms_task(user_id, template_name, context, organization_id=None, donor_id=None):
+    user = User.objects.get(pk=user_id)
+    org = Organization.objects.get(pk=organization_id) if organization_id else None
+    donor = Donor.objects.get(pk=donor_id) if donor_id else None
+    return SMSService.send(user, template_name, context, org, donor=donor)
+
+
+@celery_app.task
+def send_push_task(user_id, template_name, context, donor_id=None):
+    user = User.objects.get(pk=user_id)
+    donor = Donor.objects.get(pk=donor_id) if donor_id else None
+    WebPushService.send(user, template_name, context, donor=donor)
+
+
+def send_donor_invite(donor_id, organization_id):
     """
-    Dispatches an invite notification to a donor, subject to Quota enforcement.
+    Unified entry point for sending donor invitations.
     """
     try:
         donor = Donor.objects.get(pk=donor_id)
@@ -14,30 +46,26 @@ def send_donor_invite(donor_id, organization_id, channel=NotificationQuota.Chann
     except Donor.DoesNotExist, Organization.DoesNotExist:
         return False, "Donor or Organization not found"
 
-    # 1. Quota Check (Global, Org, and User Cool-off)
-    can_send, reason = QuotaService.can_send_notification(organization, donor, channel)
-    if not can_send:
-        QuotaService.log_notification(organization, donor, channel, "BLOCKED", reason)
-        return False, reason
+    invite_path = reverse("users:signup_info")
+    invite_url = f"{settings.BASE_URL}{invite_path}?token={donor.invite_token}"
 
-    # 2. Dispatch (Implementation Placeholder)
-    try:
-        # In a real app, integrate with SMS/Email gateway here.
-        # The invite link would use donor.invite_token.
-        # e.g., f"https://rokto.org/invite/{donor.invite_token}"
+    context = {
+        "organization_name": organization.name,
+        "invite_url": invite_url,
+    }
 
-        # TODO: integrate_with_actual_gateway(donor.phone_number, channel)
+    # If donor is already linked to a user, we notify the user via dispatcher.
+    if donor.user:
+        NotificationDispatcher.send(donor.user, "donor_invite", context, organization)
+        # Note: Dispatcher calls async tasks, so we return True here.
+        return True, None
 
-        status = "SENT"
-        QuotaService.log_notification(organization, donor, channel, status)
-
-        # Update donor invite status
+    # For Guest Donors, we send SMS directly.
+    mock_user = User(phone_number=donor.phone_number, username=donor.phone_number)
+    success, reason = SMSService.send(
+        mock_user, "donor_invite", context, organization, donor=donor
+    )
+    if success:
         donor.invite_status = Donor.InviteStatus.SENT
         donor.save(update_fields=["invite_status"])
-
-    except Exception as e:  # noqa: BLE001
-        status = "FAILED"
-        QuotaService.log_notification(organization, donor, channel, status, str(e))
-        return False, str(e)
-    else:
-        return True, None
+    return success, reason

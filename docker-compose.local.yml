@@ -12,6 +12,7 @@ services:
     container_name: project_rokto_local_django
     depends_on:
       - postgres
+      - redis
     volumes:
       - /app/.venv
       - .:/app:z
@@ -21,6 +22,67 @@ services:
     ports:
       - '8000:8000'
     command: /start
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  celeryworker:
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: project_rokto_local_django
+    container_name: project_rokto_local_celeryworker
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    command: /start-celeryworker
+
+  celerybeat:
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: project_rokto_local_django
+    container_name: project_rokto_local_celerybeat
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      django:
+        condition: service_healthy
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    command: /start-celerybeat
+
+  flower:
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: project_rokto_local_django
+    container_name: project_rokto_local_flower
+    depends_on:
+      - redis
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - '5555:5555'
+    command: /start-flower
 
   postgres:
     build:
@@ -33,6 +95,10 @@ services:
       - project_rokto_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
+
+  redis:
+    image: docker.io/redis:8.6
+    container_name: project_rokto_local_redis
 
   node:
     build:

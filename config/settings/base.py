@@ -108,6 +108,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",
     "webpack_loader",
+    "django_celery_beat",
 ]
 
 LOCAL_APPS = [
@@ -353,3 +354,41 @@ WEBPACK_LOADER = {
 # Your stuff...
 # ------------------------------------------------------------------------------
 BASE_URL = env("BASE_URL", default="http://localhost:8000")
+
+# CELERY
+# ------------------------------------------------------------------------------
+if USE_TZ:
+    # https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-timezone
+    CELERY_TIMEZONE = TIME_ZONE
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-broker_url
+CELERY_BROKER_URL = REDIS_URL
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-result_backend
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-accept_content
+CELERY_ACCEPT_CONTENT = ["json"]
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-task_serializer
+CELERY_TASK_SERIALIZER = "json"
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-result_serializer
+CELERY_RESULT_SERIALIZER = "json"
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-time-limit
+CELERY_TASK_TIME_LIMIT = 5 * 60
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-soft-time-limit
+CELERY_TASK_SOFT_TIME_LIMIT = 60
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#beat-scheduler
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-send-task-events
+CELERY_WORKER_SEND_TASK_EVENTS = True
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#std-setting-task_send_sent_event
+CELERY_TASK_SEND_SENT_EVENT = True
+
+# MIM SMS
+# ------------------------------------------------------------------------------
+MIMSMS_USERNAME = env("MIMSMS_USERNAME", default="")
+MIMSMS_API_KEY = env("MIMSMS_API_KEY", default="")
+MIMSMS_SENDER_ID = env("MIMSMS_SENDER_ID", default="")
+MIMSMS_API_URL = env("MIMSMS_API_URL", default="https://esms.mimsms.com/smsapi")
+
+# VAPID (Web Push)
+# ------------------------------------------------------------------------------
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")

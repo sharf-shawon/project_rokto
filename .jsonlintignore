@@ -1,0 +1,3 @@
+# Ignore Django-templated JSON files from JSON linting
+project_rokto/project_rokto/templates/notifications/push/donor_invite.json
+project_rokto/project_rokto/templates/notifications/push/emergency_request.json

@@ -39,3 +39,14 @@ MEDIA_URL = "http://media.testserver/"
 WEBPACK_LOADER["DEFAULT"]["LOADER_CLASS"] = "webpack_loader.loaders.FakeWebpackLoader"  # noqa: F405
 # Your stuff...
 # ------------------------------------------------------------------------------
+# CELERY
+# ------------------------------------------------------------------------------
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-always-eager
+CELERY_TASK_ALWAYS_EAGER = True
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-eager-propagates
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# VAPID
+# ------------------------------------------------------------------------------
+VAPID_PUBLIC_KEY = "test_public_key"
+VAPID_PRIVATE_KEY = "test_private_key"

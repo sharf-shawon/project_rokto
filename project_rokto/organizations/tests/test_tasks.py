@@ -26,9 +26,10 @@ def test_send_donor_invite_quota_blocked():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=0
     )
 
-    success, reason = send_donor_invite(donor.id, org.id)
-    assert success is False
-    assert "quota exceeded" in reason
+    with patch("project_rokto.organizations.services.MiMSMSClient"):
+        success, reason = send_donor_invite(donor.id, org.id)
+        assert success is False
+        assert "quota exceeded" in reason
 
 
 def test_send_donor_invite_success():
@@ -45,9 +46,11 @@ def test_send_donor_invite_success():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=10
     )
 
-    success, reason = send_donor_invite(donor.id, org.id)
-    assert success is True
-    assert reason is None
+    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
+        mock_client.return_value.send_sms.return_value = True
+        success, reason = send_donor_invite(donor.id, org.id)
+        assert success is True
+        assert reason is None
 
     donor.refresh_from_db()
     assert donor.invite_status == Donor.InviteStatus.SENT
@@ -64,9 +67,10 @@ def test_send_donor_invite_global_quota_blocked():
         defaults={"daily_limit": 0},
     )
 
-    success, reason = send_donor_invite(donor.id, org.id)
-    assert success is False
-    assert "Global quota exceeded" in reason
+    with patch("project_rokto.organizations.services.MiMSMSClient"):
+        success, reason = send_donor_invite(donor.id, org.id)
+        assert success is False
+        assert "Global quota exceeded" in reason
 
 
 def test_send_donor_invite_exception():
@@ -83,7 +87,8 @@ def test_send_donor_invite_exception():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=10
     )
 
-    with patch("project_rokto.donors.models.Donor.save", side_effect=Exception("Boom")):
+    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
+        mock_client.return_value.send_sms.side_effect = Exception("Boom")
         success, reason = send_donor_invite(donor.id, org.id)
         assert success is False
         assert reason == "Boom"

@@ -1,0 +1,6 @@
+{% load i18n %}
+{
+    "title": "{% trans 'Emergency Blood Request' %}",
+    "body": "{% blocktrans with hosp=hospital %}Urgent donation needed at {{ hosp }}{% endblocktrans %}",
+    "url": "{{ accept_url }}"
+}

@@ -1,15 +1,27 @@
 import csv
 import io
 from typing import Any
+from typing import cast
 
+from django.conf import settings
 from django.core.cache import cache
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django_mimsms.client import MiMSMSClient
+from pywebpush import WebPushException
+from pywebpush import webpush
 
 from project_rokto.donors.models import Donor
 from project_rokto.donors.models import OrganizationDonorData
+from project_rokto.users.models import NotificationPreference
 
 from .models import NotificationLog
 from .models import NotificationQuota
+
+# HTTP 410 Gone indicates that the subscription has expired or is no longer valid.
+HTTP_410_GONE = 410
 
 
 class QuotaService:
@@ -119,7 +131,7 @@ class DonorImportService:
             blood_group = row.get("blood_group")
 
             if not phone:
-                results["skipped"] += 1
+                results["skipped"] = cast("int", results["skipped"]) + 1
                 continue
 
             try:
@@ -139,13 +151,181 @@ class DonorImportService:
                 )
 
                 if created:
-                    results["created"] += 1
+                    results["created"] = cast("int", results["created"]) + 1
                 else:
-                    results["updated"] += 1
+                    results["updated"] = cast("int", results["updated"]) + 1
 
             except Exception as e:  # noqa: BLE001
                 # Catch all to prevent one bad record from failing the whole import
-                cast_errors: list[str] = results["errors"]
+                cast_errors = cast("list[str]", results["errors"])
                 cast_errors.append(f"Error processing {phone}: {e!s}")
 
         return results
+
+
+class NotificationDispatcher:
+    @staticmethod
+    def send(
+        recipient_user, template_name, context, organization=None, priority="NORMAL"
+    ):
+        """
+        Main entry point for sending notifications.
+        Routes to enabled channels based on user preferences and priority.
+        """
+        # Delay imports to avoid circular dependency
+        from .tasks import send_email_task  # noqa: PLC0415
+        from .tasks import send_push_task  # noqa: PLC0415
+        from .tasks import send_sms_task  # noqa: PLC0415
+
+        # 1. Get user preferences
+        prefs, _ = NotificationPreference.objects.get_or_create(user=recipient_user)
+
+        donor = getattr(recipient_user, "donor_profile", None)
+        donor_id = donor.id if donor else None
+
+        # 2. Determine channels based on type (mapped from template_name)
+        # Emergency Alerts
+        if "emergency" in template_name:
+            if prefs.sms_enabled and prefs.emergency_alerts:
+                send_sms_task.delay(
+                    recipient_user.id,
+                    template_name,
+                    context,
+                    organization.id if organization else None,
+                    donor_id=donor_id,
+                )
+            if prefs.web_push_enabled and prefs.emergency_alerts:
+                send_push_task.delay(
+                    recipient_user.id, template_name, context, donor_id=donor_id
+                )
+            if prefs.email_enabled and prefs.emergency_alerts:
+                send_email_task.delay(
+                    recipient_user.id, template_name, context, donor_id=donor_id
+                )
+
+        # Org Invites
+        elif "invite" in template_name:
+            if prefs.sms_enabled and prefs.org_invites:
+                send_sms_task.delay(
+                    recipient_user.id,
+                    template_name,
+                    context,
+                    organization.id if organization else None,
+                    donor_id=donor_id,
+                )
+            if prefs.email_enabled and prefs.org_invites:
+                send_email_task.delay(
+                    recipient_user.id, template_name, context, donor_id=donor_id
+                )
+
+        # Reminders / Others
+        else:
+            if prefs.web_push_enabled and prefs.reminders:
+                send_push_task.delay(
+                    recipient_user.id, template_name, context, donor_id=donor_id
+                )
+            if prefs.email_enabled and prefs.reminders:
+                send_email_task.delay(
+                    recipient_user.id, template_name, context, donor_id=donor_id
+                )
+
+
+class EmailService:
+    @staticmethod
+    def send(user, template_name, context, donor=None):
+        subject = context.get("subject", "Project Rokto Notification")
+        html_content = render_to_string(
+            f"notifications/email/{template_name}.html", context
+        )
+        text_content = strip_tags(html_content)
+
+        msg = EmailMultiAlternatives(
+            subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+
+        if donor:
+            QuotaService.log_notification(None, donor, "EMAIL", "SENT")
+
+
+class SMSService:
+    @staticmethod
+    def send(user, template_name, context, organization=None, donor=None):
+        message = render_to_string(
+            f"notifications/sms/{template_name}.txt", context
+        ).strip()
+
+        # Ensure we have a donor object for quota/cooloff checks
+        actual_donor = donor or getattr(user, "donor_profile", None)
+
+        # Check Quota
+        can_send, reason = QuotaService.can_send_notification(
+            organization,
+            actual_donor,
+            NotificationQuota.Channel.SMS,
+        )
+
+        if not can_send:
+            QuotaService.log_notification(
+                organization,
+                actual_donor,
+                NotificationQuota.Channel.SMS,
+                "BLOCKED",
+                reason,
+            )
+            return False, reason
+
+        try:
+            client = MiMSMSClient(
+                settings.MIMSMS_USERNAME,
+                settings.MIMSMS_API_KEY,
+                settings.MIMSMS_SENDER_ID,
+                api_url=settings.MIMSMS_API_URL,
+            )
+            client.send_sms(user.phone_number, message)
+            QuotaService.log_notification(organization, actual_donor, "SMS", "SENT")
+        except Exception as e:  # noqa: BLE001
+            QuotaService.log_notification(
+                organization,
+                actual_donor,
+                "SMS",
+                "FAILED",
+                str(e),
+            )
+            return False, str(e)
+        else:
+            return True, None
+
+
+class WebPushService:
+    @staticmethod
+    def send(user, template_name, context, donor=None):
+        message_data = render_to_string(
+            f"notifications/push/{template_name}.json", context
+        )
+
+        # Ensure we have a donor object for logging
+        actual_donor = donor or getattr(user, "donor_profile", None)
+
+        subscriptions = user.web_push_subscriptions.all()
+        for sub in subscriptions:
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                    },
+                    data=message_data,
+                    vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                    vapid_claims={"sub": f"mailto:{settings.DEFAULT_FROM_EMAIL}"},
+                )
+                if actual_donor:
+                    QuotaService.log_notification(None, actual_donor, "WEBPUSH", "SENT")
+            except WebPushException as ex:
+                if ex.response and ex.response.status_code == HTTP_410_GONE:
+                    # Subscription has expired or is no longer valid
+                    sub.delete()
+                else:
+                    # Log other errors
+                    pass

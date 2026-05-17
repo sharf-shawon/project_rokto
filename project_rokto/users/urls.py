@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import nid_submission_view
+from .views import notification_preference_view
 from .views import otp_verify_view
 from .views import phone_login_view
 from .views import phone_manage_view
@@ -21,5 +22,10 @@ urlpatterns = [
     path("verify/phone/", view=phone_manage_view, name="phone_add"),
     path("verify/phone/manage/", view=phone_manage_view, name="phone_manage"),
     path("verify/phone/otp/", view=phone_verify_otp_view, name="phone_verify_otp"),
+    path(
+        "notifications/",
+        view=notification_preference_view,
+        name="notification_preferences",
+    ),
     path("<str:username>/", view=user_detail_view, name="detail"),
 ]

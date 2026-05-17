@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from project_rokto.locations.serializers import LocationSerializer
 from project_rokto.users.models import User
+from project_rokto.users.models import WebPushSubscription
 from project_rokto.users.utils import obfuscate_name
 from project_rokto.users.utils import obfuscate_phone_number
 
@@ -66,3 +67,22 @@ class DonorSearchSerializer(serializers.ModelSerializer[User]):
 
     def get_name(self, obj) -> str:
         return obfuscate_name(obj.name)
+
+
+class WebPushSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebPushSubscription
+        fields = ["endpoint", "p256dh", "auth"]
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        # Prevent duplicates
+        subscription, _ = WebPushSubscription.objects.update_or_create(
+            endpoint=validated_data["endpoint"],
+            defaults={
+                "user": user,
+                "p256dh": validated_data["p256dh"],
+                "auth": validated_data["auth"],
+            },
+        )
+        return subscription

@@ -103,6 +103,10 @@ class BloodRequestDonor(models.Model):
         blank=True,
     )
 
+    responded_at = models.DateTimeField(_("Responded At"), null=True, blank=True)
+    created_at = models.DateTimeField(
+        _("Created At"), auto_now_add=True, db_index=True, null=True
+    )
     updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
     class Meta:

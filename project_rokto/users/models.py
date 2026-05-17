@@ -194,3 +194,52 @@ class NIDVerification(models.Model):
 
     def __str__(self):
         return f"NID Verification for {self.user.username} ({self.status})"
+
+
+class NotificationPreference(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+    )
+
+    email_enabled = models.BooleanField(_("Email Notifications"), default=True)
+    sms_enabled = models.BooleanField(_("SMS Notifications"), default=True)
+    web_push_enabled = models.BooleanField(_("Web Push Notifications"), default=True)
+
+    # Categories
+    emergency_alerts = models.BooleanField(_("Emergency Blood Requests"), default=True)
+    org_invites = models.BooleanField(_("Organization Invites"), default=True)
+    reminders = models.BooleanField(_("Donation Reminders"), default=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Notification Preference")
+        verbose_name_plural = _("Notification Preferences")
+
+    def __str__(self):
+        return f"Preferences for {self.user.username}"
+
+
+class WebPushSubscription(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="web_push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Web Push Subscription")
+        verbose_name_plural = _("Web Push Subscriptions")
+
+    def __str__(self):
+        return f"Subscription for {self.user.username}"

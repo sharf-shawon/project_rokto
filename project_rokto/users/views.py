@@ -19,12 +19,14 @@ from django.views.generic import UpdateView
 
 from project_rokto.donors.models import Donor
 from project_rokto.users.forms import NIDSubmissionForm
+from project_rokto.users.forms import NotificationPreferenceForm
 from project_rokto.users.forms import OTPVerifyForm
 from project_rokto.users.forms import PhoneAddForm
 from project_rokto.users.forms import PhoneLoginForm
 from project_rokto.users.forms import UserInfoForm
 from project_rokto.users.forms import UserUpdateForm
 from project_rokto.users.models import NIDVerification
+from project_rokto.users.models import NotificationPreference
 from project_rokto.users.models import OTPRequest
 from project_rokto.users.models import User
 
@@ -349,3 +351,25 @@ class PhoneVerifyOTPView(LoginRequiredMixin, FormView):
 
 
 phone_verify_otp_view = PhoneVerifyOTPView.as_view()
+
+
+class NotificationPreferenceUpdateView(
+    LoginRequiredMixin, SuccessMessageMixin, UpdateView
+):
+    model = NotificationPreference
+    form_class = NotificationPreferenceForm
+    template_name = "users/notification_preferences.html"
+    success_message = _("Notification preferences updated successfully")
+
+    def get_object(self, queryset: QuerySet | None = None) -> NotificationPreference:
+        user = self.request.user
+        assert user.is_authenticated  # type guard
+        obj, _ = NotificationPreference.objects.get_or_create(user=user)
+        return obj
+
+    def get_success_url(self) -> str:
+        assert self.request.user.is_authenticated  # type guard
+        return reverse("users:detail", kwargs={"username": self.request.user.username})
+
+
+notification_preference_view = NotificationPreferenceUpdateView.as_view()

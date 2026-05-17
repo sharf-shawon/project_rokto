@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+  <h2>{% trans "Emergency Blood Request" %}</h2>
+  <p>{% blocktrans with seeker=seeker_name %}A donor is urgently needed for {{ seeker }}.{% endblocktrans %}</p>
+  <ul>
+    <li>
+      <strong>{% trans "Hospital:" %}</strong> {{ hospital }}
+    </li>
+    <li>
+      <strong>{% trans "Bags Needed:" %}</strong> {{ bags_needed }}
+    </li>
+    <li>
+      <strong>{% trans "Date:" %}</strong> {{ donation_date }}
+    </li>
+  </ul>
+  <p>{% trans "Please respond as soon as possible:" %}</p>
+  <div class="btn-group mt-3">
+    <a href="{{ accept_url }}" class="btn btn-success">{% trans "I Can Donate" %}</a>
+    <a href="{{ decline_url }}" class="btn btn-danger ms-2">{% trans "I Cannot Donate" %}</a>
+  </div>
+{% endblock content %}

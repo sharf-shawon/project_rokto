@@ -148,7 +148,7 @@ def test_confirm_donation_public_view_already_confirmed(client):
     )
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
-    assert "already fully confirmed" in response.content.decode()
+    assert "already been fully confirmed" in response.content.decode()
 
 
 def test_confirm_donation_public_view_invalid_actor(client):

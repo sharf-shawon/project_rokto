@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+  <h2>{% trans "Organization Invitation" %}</h2>
+  <p>
+    {% blocktrans with org_name=organization_name %}You have been invited to join {{ org_name }} on Project Rokto.{% endblocktrans %}
+  </p>
+  <p>{% trans "Click the link below to complete your verified profile:" %}</p>
+  <a href="{{ invite_url }}">{{ invite_url }}</a>
+{% endblock content %}

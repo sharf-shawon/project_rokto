@@ -8,6 +8,7 @@ from project_rokto.donors.models import Donor
 from project_rokto.locations.models import Location
 
 from .models import NIDVerification
+from .models import NotificationPreference
 from .models import User
 from .models import phone_validator
 
@@ -230,3 +231,16 @@ class NIDSubmissionForm(forms.ModelForm):
     class Meta:
         model = NIDVerification
         fields = ["front_image", "back_image"]
+
+
+class NotificationPreferenceForm(forms.ModelForm):
+    class Meta:
+        model = NotificationPreference
+        fields = [
+            "email_enabled",
+            "sms_enabled",
+            "web_push_enabled",
+            "emergency_alerts",
+            "org_invites",
+            "reminders",
+        ]
