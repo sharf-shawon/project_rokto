@@ -24,6 +24,20 @@ def test_phone_login_view_get(client):
     assert "users/phone_login.html" in [t.name for t in response.templates]
 
 
+def test_phone_login_page_shows_dual_purpose_and_links(client):
+    """Phone login page shows dual sign in/up heading and auth method links."""
+    url = reverse("users:phone_login")
+    response = client.get(url)
+    content = response.content.decode()
+
+    # Check dual-purpose heading
+    assert "Sign In / Sign Up with Phone" in content
+
+    # Check links to other auth methods
+    assert reverse("account_login") in content
+    assert reverse("account_signup") in content
+
+
 def test_phone_login_generates_otp(client):
     url = reverse("users:phone_login")
     response = client.post(url, {"phone_number": "01712345678"})
@@ -82,7 +96,8 @@ def test_otp_verify_invalid_code(client):
     assert "Invalid or expired OTP." in response.content.decode()
 
 
-def test_signup_info_view(client):
+def test_signup_info_view_with_email(client):
+    """Test signup with email provided (backward compatibility)."""
     session = client.session
     session["verified_phone_number"] = "01712345678"
     session.save()
@@ -94,7 +109,6 @@ def test_signup_info_view(client):
     response = client.post(
         url,
         {
-            "username": "newuser",
             "name": "New User",
             "email": "newuser@example.com",
         },
@@ -104,6 +118,31 @@ def test_signup_info_view(client):
     user = User_Model.objects.get(phone_number="01712345678")
     assert user.username == "01712345678"
     assert user.name == "New User"
+    assert user.email == "newuser@example.com"
+    assert user.is_phone_verified is True
+    assert user.is_authenticated
+
+
+def test_signup_info_view_without_email(client):
+    """Test signup without email (email is optional)."""
+    session = client.session
+    session["verified_phone_number"] = "01812345678"
+    session.save()
+
+    url = reverse("users:signup_info")
+
+    response = client.post(
+        url,
+        {
+            "name": "Phone Only User",
+        },
+    )
+    assert response.status_code == HTTPStatus.FOUND
+    assert User_Model.objects.filter(phone_number="01812345678").exists()
+    user = User_Model.objects.get(phone_number="01812345678")
+    assert user.username == "01812345678"
+    assert user.name == "Phone Only User"
+    assert user.email == ""  # No email provided
     assert user.is_phone_verified is True
     assert user.is_authenticated
 

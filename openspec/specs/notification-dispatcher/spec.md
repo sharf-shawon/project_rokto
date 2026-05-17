@@ -30,3 +30,13 @@ The dispatcher SHALL call the `QuotaService` to verify available budget and cool
 - **WHEN** an organization attempts to send a donor invite
 - **AND** the organization's daily SMS quota is reached
 - **THEN** the dispatcher SHALL block the SMS and log the failure.
+
+### Requirement: Reliable Scheduler Initialization
+
+The system SHALL ensure that the Celery Beat scheduler service only starts after all database migrations, specifically those for `django_celery_beat`, have been successfully applied.
+
+#### Scenario: Startup with pending migrations
+
+- **WHEN** the docker-compose environment is starting
+- **AND** the `django_celery_beat` tables are not yet present in the database
+- **THEN** the `celerybeat` service SHALL wait for the migration process to complete before attempting to initialize the scheduler.

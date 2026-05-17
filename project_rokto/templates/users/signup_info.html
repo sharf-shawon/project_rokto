@@ -13,7 +13,9 @@
         <div class="card mt-5">
           <div class="card-body">
             <h2 class="card-title text-center">{% trans "Almost there!" %}</h2>
-            <p class="text-muted text-center">{% trans "Please provide your basic information to complete the sign up." %}</p>
+            <p class="text-muted text-center">
+              {% trans "Please provide your name to complete the sign up. Email is optional but recommended for receiving notifications." %}
+            </p>
             <form method="post">
               {% csrf_token %}
               {{ form|crispy }}

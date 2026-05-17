@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
+from django.db import connections
+from django.db.utils import OperationalError
 from django.http import HttpResponse
 from django.urls import include
 from django.urls import path
@@ -14,6 +16,17 @@ from project_rokto.users.admin_unfold import admin_site
 
 
 def health(request):
+    """Health check endpoint that verifies database connectivity."""
+    try:
+        connections["default"].ensure_connection()
+        with connections["default"].cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except OperationalError:
+        return HttpResponse(
+            "Database connection failed",
+            status=503,
+            content_type="text/plain",
+        )
     return HttpResponse("ok", status=200, content_type="text/plain")
 
 

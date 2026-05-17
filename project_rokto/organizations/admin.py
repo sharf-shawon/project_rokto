@@ -10,6 +10,8 @@ from unfold.sites import UnfoldAdminSite
 from project_rokto.users.admin_unfold import admin_site
 from project_rokto.users.models import User
 
+from .models import NotificationLog
+from .models import NotificationQuota
 from .models import Organization
 from .models import OrganizationMember
 
@@ -45,6 +47,22 @@ class OrganizationAdminSite(UnfoldAdminSite):
                         "title": _("Donors"),
                         "icon": "volunteer_activism",
                         "link": "org_admin:donors_donor_changelist",
+                    },
+                ],
+            },
+            {
+                "title": _("Communications"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Notification Logs"),
+                        "icon": "notifications",
+                        "link": "org_admin:organizations_notificationlog_changelist",
+                    },
+                    {
+                        "title": _("Notification Quotas"),
+                        "icon": "bar_chart",
+                        "link": "org_admin:organizations_notificationquota_changelist",
                     },
                 ],
             },
@@ -138,3 +156,117 @@ class OrganizationMemberOrgAdmin(OrganizationMemberAdminBase):
 @admin.register(OrganizationMember, site=admin_site)
 class OrganizationMemberAdmin(OrganizationMemberAdminBase):
     pass
+
+
+# ---------------------------------------------------------------------------
+# NotificationLog Admin
+# ---------------------------------------------------------------------------
+
+
+class NotificationLogAdminBase(ModelAdmin):
+    """Base admin for NotificationLog with shared display configuration."""
+
+    list_display = [
+        "channel",
+        "status",
+        "donor_link",
+        "organization_link",
+        "created_at",
+    ]
+    list_filter = ["channel", "status", "organization"]
+    search_fields = [
+        "donor__phone_number",
+    ]
+    date_hierarchy = "created_at"
+    list_select_related = ["donor", "organization"]
+
+    @admin.display(description=_("Donor"), ordering="donor__phone_number")
+    def donor_link(self, obj):
+        """Display donor phone number."""
+        return str(obj.donor) if obj.donor else "-"
+
+    @admin.display(description=_("Organization"), ordering="organization__name")
+    def organization_link(self, obj):
+        """Display organization name."""
+        return str(obj.organization) if obj.organization else "GLOBAL"
+
+
+@admin.register(NotificationLog, site=admin_site)
+class NotificationLogAdmin(NotificationLogAdminBase):
+    """Full-access admin for superusers."""
+
+
+@admin.register(NotificationLog, site=org_admin_site)
+class NotificationLogOrgAdmin(NotificationLogAdminBase):
+    """Read-only org-scoped admin for organization admins."""
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(
+            organization__members__user=request.user,
+        ).distinct()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# ---------------------------------------------------------------------------
+# NotificationQuota Admin
+# ---------------------------------------------------------------------------
+
+
+class NotificationQuotaAdminBase(ModelAdmin):
+    """Base admin for NotificationQuota with shared display configuration."""
+
+    list_display = [
+        "channel",
+        "organization_link",
+        "daily_limit",
+        "current_daily_usage",
+        "weekly_limit",
+        "current_weekly_usage",
+        "monthly_limit",
+        "current_monthly_usage",
+    ]
+    list_filter = ["channel", "organization"]
+    list_select_related = ["organization"]
+
+    @admin.display(description=_("Organization"), ordering="organization__name")
+    def organization_link(self, obj):
+        """Display organization name."""
+        return str(obj.organization) if obj.organization else "GLOBAL"
+
+
+@admin.register(NotificationQuota, site=admin_site)
+class NotificationQuotaAdmin(NotificationQuotaAdminBase):
+    """Full-access admin for superusers."""
+
+
+@admin.register(NotificationQuota, site=org_admin_site)
+class NotificationQuotaOrgAdmin(NotificationQuotaAdminBase):
+    """Read-only org-scoped admin for organization admins."""
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(
+            organization__members__user=request.user,
+        ).distinct()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

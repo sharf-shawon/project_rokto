@@ -222,6 +222,11 @@ class PhoneAddForm(forms.Form):
 
 
 class UserInfoForm(forms.ModelForm):
+    email = forms.EmailField(
+        required=False,
+        label=_("Email (optional)"),
+    )
+
     class Meta:
         model = User
         fields = ["name", "email"]

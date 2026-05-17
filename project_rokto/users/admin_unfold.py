@@ -77,6 +77,22 @@ class ProjectRoktoAdminSite(UnfoldAdminSite):
                     },
                 ],
             },
+            {
+                "title": _("Communications"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Notification Logs"),
+                        "icon": "notifications",
+                        "link": "admin:organizations_notificationlog_changelist",
+                    },
+                    {
+                        "title": _("Notification Quotas"),
+                        "icon": "bar_chart",
+                        "link": "admin:organizations_notificationquota_changelist",
+                    },
+                ],
+            },
         ]
 
 
