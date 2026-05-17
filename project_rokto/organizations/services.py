@@ -22,6 +22,7 @@ from .models import NotificationQuota
 
 # HTTP 410 Gone indicates that the subscription has expired or is no longer valid.
 HTTP_410_GONE = 410
+BD_PHONE_DIGITS = 11
 
 
 class QuotaService:
@@ -283,7 +284,12 @@ class SMSService:
                 settings.MIMSMS_SENDER_ID,
                 api_url=settings.MIMSMS_API_URL,
             )
-            client.send_sms(user.phone_number, message)
+            number = str(user.phone_number)
+
+            if not number.startswith("880") and len(number) == BD_PHONE_DIGITS:
+                number = "88" + number  # Ensure number starts with country code
+
+            client.send_sms(number, message)
             QuotaService.log_notification(organization, actual_donor, "SMS", "SENT")
         except Exception as e:  # noqa: BLE001
             QuotaService.log_notification(

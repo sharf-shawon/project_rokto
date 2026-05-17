@@ -229,6 +229,7 @@ class BloodRequestViewSet(viewsets.ModelViewSet):
                 "seeker_name": blood_request.seeker.name
                 or blood_request.seeker.username,
                 "hospital": blood_request.hospital,
+                "reason": blood_request.reason,
                 "bags_needed": blood_request.bags_needed,
                 "donation_date": blood_request.donation_date,
                 "accept_url": f"{settings.BASE_URL}{accept_path}",

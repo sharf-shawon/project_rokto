@@ -1,1 +1,8 @@
-{% load i18n %}{% blocktrans with seeker=seeker_name hosp=hospital date=donation_date %}Emergency: Blood needed for {{ seeker }} at {{ hosp }} on {{ date }}. Accept: {{ accept_url }}{% endblocktrans %}
+{% load i18n %}
+{% blocktrans with seeker=seeker_name hosp=hospital date=donation_date %}Project Rokto:
+Blood Donation needed.
+Reason: {{ reason }}.
+Location: {{ hosp }}.
+Date: {{ date }}.
+
+Accept: {{ accept_url }}{% endblocktrans %}
