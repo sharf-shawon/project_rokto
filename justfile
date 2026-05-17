@@ -58,7 +58,7 @@ test-coverage:
 lint:
     @pre-commit run --all-files
 
-# check: Run all quality checks (lint, type, test)
+# check: Run all quality checks (lint, type, test, coverage)
 check: lint
     @docker compose run --rm django mypy project_rokto
-    @just test
+    @just test-coverage

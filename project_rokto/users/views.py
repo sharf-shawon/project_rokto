@@ -17,6 +17,7 @@ from django.views.generic import FormView
 from django.views.generic import RedirectView
 from django.views.generic import UpdateView
 
+from project_rokto.donors.models import Donor
 from project_rokto.users.forms import NIDSubmissionForm
 from project_rokto.users.forms import OTPVerifyForm
 from project_rokto.users.forms import PhoneAddForm
@@ -182,6 +183,17 @@ class SignupInfoView(FormView):
         user.is_phone_verified = True
         user.set_unusable_password()
         user.save()
+
+        # Link existing donor profile if it exists (Guest to Verified transition)
+        donor = Donor.objects.filter(phone_number=phone_number).first()
+        if donor:
+            donor.user = user
+            donor.invite_status = Donor.InviteStatus.REGISTERED
+            donor.save(update_fields=["user", "invite_status"])
+        else:
+            # Create fresh donor profile
+            Donor.objects.create(user=user, phone_number=phone_number)
+
         login(
             self.request,
             user,

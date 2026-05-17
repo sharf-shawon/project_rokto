@@ -54,4 +54,4 @@ class OrganizationListView(ListView):
     model = Organization
     template_name = "organizations/organization_list.html"
     context_object_name = "organizations"
-    queryset = Organization.objects.filter(is_verified=True)
+    queryset = Organization.objects.filter()

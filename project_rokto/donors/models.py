@@ -19,6 +19,12 @@ class Donor(models.Model):
         AB_POSITIVE = "AB+", "AB+"
         AB_NEGATIVE = "AB-", "AB-"
 
+    class InviteStatus(models.TextChoices):
+        PENDING = "PENDING", _("Pending")
+        SENT = "SENT", _("Sent")
+        REGISTERED = "REGISTERED", _("Registered")
+        BOUNCED = "BOUNCED", _("Bounced")
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -78,12 +84,24 @@ class Donor(models.Model):
         db_index=True,
     )
 
-    organization = models.ForeignKey(
+    invite_token = models.UUIDField(
+        _("Invite Token"),
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
+    )
+    invite_status = models.CharField(
+        _("Invite Status"),
+        max_length=20,
+        choices=InviteStatus.choices,
+        default=InviteStatus.PENDING,
+    )
+
+    organizations: models.ManyToManyField = models.ManyToManyField(
         "organizations.Organization",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        through="OrganizationDonorData",
         related_name="donors",
+        verbose_name=_("Organizations"),
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -97,3 +115,31 @@ class Donor(models.Model):
         if self.user:
             return f"{self.user.name or self.user.username} ({self.blood_group})"
         return f"Guest Donor ({self.blood_group})"
+
+
+class OrganizationDonorData(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="donor_data",
+    )
+    donor = models.ForeignKey(
+        "Donor",
+        on_delete=models.CASCADE,
+        related_name="organization_data",
+    )
+
+    guest_name = models.CharField(_("Guest Name"), max_length=255, blank=True)
+    guest_notes = models.TextField(_("Guest Notes"), blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Organization Donor Data")
+        verbose_name_plural = _("Organization Donor Data")
+        unique_together = ["organization", "donor"]
+
+    def __str__(self):
+        return f"{self.guest_name or 'Guest'} - {self.organization.name}"

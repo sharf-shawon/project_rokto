@@ -113,9 +113,29 @@ class BloodRequestDonor(models.Model):
     def __str__(self):
         return f"{self.donor.username} - {self.response_status}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_fully_confirmed:
+            self.update_donor_profile()
+
     @property
     def is_fully_confirmed(self):
         return (
             self.seeker_confirmation == self.DonationConfirmation.YES
             and self.donor_confirmation == self.DonationConfirmation.YES
         )
+
+    def update_donor_profile(self):
+        """
+        Updates the donor's last donation date if this request is fully confirmed.
+        """
+        donor_profile = self.donor.donor_profile
+        request_date = self.blood_request.donation_date
+
+        if (
+            not donor_profile.last_donation_date
+            or request_date >= donor_profile.last_donation_date
+        ):
+            if donor_profile.last_donation_date != request_date:
+                donor_profile.last_donation_date = request_date
+                donor_profile.save(update_fields=["last_donation_date"])

@@ -69,3 +69,86 @@ class OrganizationMember(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.organization.name} ({self.role})"
+
+
+class NotificationQuota(models.Model):
+    class Channel(models.TextChoices):
+        SMS = "SMS", _("SMS")
+        EMAIL = "EMAIL", _("Email")
+        WEBPUSH = "WEBPUSH", _("WebPush")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="quotas",
+        null=True,
+        blank=True,  # Null represents Global Quota
+    )
+    channel = models.CharField(
+        _("Channel"),
+        max_length=10,
+        choices=Channel.choices,
+    )
+
+    daily_limit = models.PositiveIntegerField(_("Daily Limit"), default=50)
+    weekly_limit = models.PositiveIntegerField(_("Weekly Limit"), default=300)
+    monthly_limit = models.PositiveIntegerField(_("Monthly Limit"), default=1000)
+
+    current_daily_usage = models.PositiveIntegerField(
+        _("Current Daily Usage"), default=0
+    )
+    current_weekly_usage = models.PositiveIntegerField(
+        _("Current Weekly Usage"), default=0
+    )
+    current_monthly_usage = models.PositiveIntegerField(
+        _("Current Monthly Usage"), default=0
+    )
+
+    last_reset_daily = models.DateTimeField(_("Last Daily Reset"), auto_now_add=True)
+    last_reset_weekly = models.DateTimeField(_("Last Weekly Reset"), auto_now_add=True)
+    last_reset_monthly = models.DateTimeField(
+        _("Last Monthly Reset"), auto_now_add=True
+    )
+
+    class Meta:
+        verbose_name = _("Notification Quota")
+        verbose_name_plural = _("Notification Quotas")
+        unique_together = ["organization", "channel"]
+
+    def __str__(self):
+        org_name = self.organization.name if self.organization else "GLOBAL"
+        return f"{org_name} - {self.channel} Quota"
+
+
+class NotificationLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_logs",
+    )
+    donor = models.ForeignKey(
+        "donors.Donor",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_logs",
+    )
+    channel = models.CharField(
+        _("Channel"),
+        max_length=10,
+        choices=NotificationQuota.Channel.choices,
+    )
+    status = models.CharField(_("Status"), max_length=50)  # SENT, FAILED, BLOCKED
+    failure_reason = models.TextField(_("Failure Reason"), blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Notification Log")
+        verbose_name_plural = _("Notification Logs")
+
+    def __str__(self):
+        return f"{self.channel} to {self.donor} - {self.status}"

@@ -67,7 +67,7 @@ Project Rokto uses a **Spec-Driven Development** lifecycle powered by OpenSpec (
    - Ensure type annotations are used for all new Python code.
 4. **VERIFY (`just check`)**:
    - Add new tests for all behavior changes and edge cases.
-   - **Verification:** Run `just test-coverage` and ensure total coverage remains >= 95%.
+   - **Verification:** Run `just test-coverage` and ensure total coverage remains >= 95.00%. Commits SHALL NOT be made if coverage falls below this threshold.
    - Ensure `mypy` and linting (`ruff`, `prettier`, `djlint`) pass.
 5. **ARCHIVE (`/opsx:archive`)**:
    - Finalize the change and merge specs into the main specification database.
