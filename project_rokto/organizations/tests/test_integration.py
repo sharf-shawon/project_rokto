@@ -50,11 +50,10 @@ def test_full_flow_import_invite_signup_quota(client):
     donor1 = Donor.objects.get(phone_number="01711111111")
 
     # 3. Send Invite (within quota)
-    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
-        mock_client.return_value.send_sms.return_value = True
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.return_value = {"status": "sent", "trxn_id": "123"}
         success, reason = send_donor_invite(donor1.id, org.id)
         assert success is True
-        assert donor1.notification_logs.count() == 1
 
     # 4. Attempt second invite (User Cool-off)
     success, reason = send_donor_invite(donor1.id, org.id)

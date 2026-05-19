@@ -54,6 +54,8 @@ urlpatterns = [
         include("project_rokto.blood_requests.urls", namespace="blood_requests"),
     ),
     path("accounts/", include("allauth.urls")),
+    # Short URL redirects
+    path("s/", include("project_rokto.notifications.urls", namespace="notifications")),
     # Your stuff: custom urls includes go here
     # ...
     # Media files

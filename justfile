@@ -13,6 +13,8 @@ default:
 build *args:
     @echo "Building python image..."
     @docker compose build {{args}}
+    @docker compose run --rm django uv lock
+
 
 # up: Start up containers.
 up:

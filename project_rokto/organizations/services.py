@@ -1,5 +1,6 @@
 import csv
 import io
+import warnings
 from typing import Any
 from typing import cast
 
@@ -9,12 +10,13 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from django_mimsms.client import MiMSMSClient
 from pywebpush import WebPushException
 from pywebpush import webpush
 
 from project_rokto.donors.models import Donor
 from project_rokto.donors.models import OrganizationDonorData
+from project_rokto.notifications.models import SMSLog
+from project_rokto.notifications.services import UnifiedSMSService
 from project_rokto.users.models import NotificationPreference
 
 from .models import NotificationLog
@@ -251,16 +253,37 @@ class EmailService:
 
 
 class SMSService:
+    """
+    Legacy SMSService — delegates to UnifiedSMSService.
+
+    Kept for backward compatibility. All new code should use
+    UnifiedSMSService directly.
+    """
+
     @staticmethod
     def send(user, template_name, context, organization=None, donor=None):
+
+        warnings.warn(
+            "SMSService.send() is deprecated. Use UnifiedSMSService instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         message = render_to_string(
             f"notifications/sms/{template_name}.txt", context
         ).strip()
 
-        # Ensure we have a donor object for quota/cooloff checks
+        # Determine category from template name
+        if "emergency" in template_name:
+            category = SMSLog.Category.EMERGENCY
+        elif "invite" in template_name:
+            category = SMSLog.Category.INVITE
+        else:
+            category = SMSLog.Category.OTHER
+
+        # Legacy quota checks (maintained for backward compatibility)
         actual_donor = donor or getattr(user, "donor_profile", None)
 
-        # Check Quota
         can_send, reason = QuotaService.can_send_notification(
             organization,
             actual_donor,
@@ -277,31 +300,28 @@ class SMSService:
             )
             return False, reason
 
-        try:
-            client = MiMSMSClient(
-                settings.MIMSMS_USERNAME,
-                settings.MIMSMS_API_KEY,
-                settings.MIMSMS_SENDER_ID,
-                api_url=settings.MIMSMS_API_URL,
-            )
-            number = str(user.phone_number)
+        # ignore SLF001 for this
 
-            if not number.startswith("880") and len(number) == BD_PHONE_DIGITS:
-                number = "88" + number  # Ensure number starts with country code
+        related_user = user if user.pk is not None and not user._state.adding else None  # noqa: SLF001
+        # Use UnifiedSMSService for the actual send
+        success, msg = UnifiedSMSService.send(
+            phone_number=str(user.phone_number),
+            message=message,
+            category=category,
+            related_user=related_user,
+            related_organization=organization,
+        )
 
-            client.send_sms(number, message)
-            QuotaService.log_notification(organization, actual_donor, "SMS", "SENT")
-        except Exception as e:  # noqa: BLE001
-            QuotaService.log_notification(
-                organization,
-                actual_donor,
-                "SMS",
-                "FAILED",
-                str(e),
-            )
-            return False, str(e)
-        else:
-            return True, None
+        # Legacy logging (NotificationLog) - maintained for backward compat
+        if actual_donor:
+            if success:
+                QuotaService.log_notification(organization, actual_donor, "SMS", "SENT")
+            else:
+                QuotaService.log_notification(
+                    organization, actual_donor, "SMS", "FAILED", msg
+                )
+
+        return success, msg
 
 
 class WebPushService:

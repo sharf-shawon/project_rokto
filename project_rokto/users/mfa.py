@@ -3,6 +3,8 @@ import secrets
 
 from django.utils import timezone
 
+from project_rokto.notifications.services import UnifiedSMSService
+
 from .models import OTPRequest
 
 
@@ -24,9 +26,13 @@ class SMSAuthenticator:
             otp_code=otp_code,
             expires_at=timezone.now() + datetime.timedelta(minutes=5),
         )
-        # In a real app, send the SMS here.
-        # TODO: print(f"DEBUG: SMS OTP for {self.user.username}: {otp_code}")
-        return True
+        # Send the OTP via the unified SMS service
+        success, _ = UnifiedSMSService.send_otp(
+            phone_number=self.user.phone_number,
+            otp_code=otp_code,
+            related_user=self.user,
+        )
+        return success
 
     def validate_otp(self, code):
         try:

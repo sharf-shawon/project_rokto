@@ -117,6 +117,7 @@ LOCAL_APPS = [
     "project_rokto.blood_requests",
     "project_rokto.donors",
     "project_rokto.organizations",
+    "project_rokto.notifications",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -177,6 +178,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "project_rokto.organizations.middleware.OrgManagerMFAMiddleware",
+    "project_rokto.notifications.middleware.OTPRateLimitMiddleware",
     "project_rokto.users.middleware.VerificationMiddleware",
 ]
 
@@ -354,6 +356,12 @@ WEBPACK_LOADER = {
 # Your stuff...
 # ------------------------------------------------------------------------------
 BASE_URL = env("BASE_URL", default="http://localhost:8000")
+
+# SMS & NOTIFICATIONS
+# ------------------------------------------------------------------------------
+SMS_ALERT_THRESHOLD = env.int("SMS_ALERT_THRESHOLD", default=140)
+SHORT_URL_DOMAIN = env("SHORT_URL_DOMAIN", default="")
+SHORT_URL_SALT = env("SHORT_URL_SALT", default="project_rokto_default_salt")
 
 # CELERY
 # ------------------------------------------------------------------------------

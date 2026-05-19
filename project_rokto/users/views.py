@@ -18,6 +18,7 @@ from django.views.generic import RedirectView
 from django.views.generic import UpdateView
 
 from project_rokto.donors.models import Donor
+from project_rokto.notifications.services import UnifiedSMSService
 from project_rokto.users.forms import NIDSubmissionForm
 from project_rokto.users.forms import NotificationPreferenceForm
 from project_rokto.users.forms import OTPVerifyForm
@@ -112,6 +113,12 @@ class PhoneLoginView(FormView):
             phone_number=phone_number,
             otp_code=otp_code,
             expires_at=timezone.now() + datetime.timedelta(minutes=5),
+        )
+
+        # Send the OTP via the unified SMS service
+        UnifiedSMSService.send_otp(
+            phone_number=phone_number,
+            otp_code=otp_code,
         )
 
         self.request.session["phone_number"] = phone_number
@@ -305,6 +312,14 @@ class PhoneManageView(LoginRequiredMixin, FormView):
             otp_code=otp_code,
             expires_at=timezone.now() + datetime.timedelta(minutes=5),
         )
+
+        # Send the OTP via the unified SMS service
+        UnifiedSMSService.send_otp(
+            phone_number=phone_number,
+            otp_code=otp_code,
+            related_user=self.request.user,
+        )
+
         self.request.session["pending_phone_number"] = phone_number
         return redirect("users:phone_verify_otp")
 

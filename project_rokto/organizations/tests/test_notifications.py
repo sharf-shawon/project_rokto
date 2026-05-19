@@ -64,8 +64,8 @@ def test_dispatcher_user_cooloff():
     org = Organization.objects.create(name="Cooloff Org")
 
     # First send success
-    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
-        mock_client.return_value.send_sms.return_value = True
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.return_value = {"status": "sent", "trxn_id": "123"}
 
         success, _ = SMSService.send(
             user, "emergency_request", {"hospital": "Test"}, organization=org

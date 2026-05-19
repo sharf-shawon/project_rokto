@@ -26,7 +26,8 @@ def test_send_donor_invite_quota_blocked():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=0
     )
 
-    with patch("project_rokto.organizations.services.MiMSMSClient"):
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.return_value = {"status": "sent", "trxn_id": "123"}
         success, reason = send_donor_invite(donor.id, org.id)
         assert success is False
         assert "quota exceeded" in reason
@@ -35,6 +36,8 @@ def test_send_donor_invite_quota_blocked():
 def test_send_donor_invite_success():
     org = Organization.objects.create(name="Success Org")
     donor = Donor.objects.create(phone_number="01799999999")
+    org.refresh_from_db()
+    donor.refresh_from_db()
 
     NotificationQuota.objects.get_or_create(
         organization=None,
@@ -46,11 +49,11 @@ def test_send_donor_invite_success():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=10
     )
 
-    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
-        mock_client.return_value.send_sms.return_value = True
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.return_value = {"status": "sent", "trxn_id": "123"}
         success, reason = send_donor_invite(donor.id, org.id)
         assert success is True
-        assert reason is None
+        assert "SMS sent successfully" in reason
 
     donor.refresh_from_db()
     assert donor.invite_status == Donor.InviteStatus.SENT
@@ -67,7 +70,8 @@ def test_send_donor_invite_global_quota_blocked():
         defaults={"daily_limit": 0},
     )
 
-    with patch("project_rokto.organizations.services.MiMSMSClient"):
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.return_value = {"status": "sent", "trxn_id": "123"}
         success, reason = send_donor_invite(donor.id, org.id)
         assert success is False
         assert "Global quota exceeded" in reason
@@ -76,6 +80,8 @@ def test_send_donor_invite_global_quota_blocked():
 def test_send_donor_invite_exception():
     org = Organization.objects.create(name="Fail Org")
     donor = Donor.objects.create(phone_number="01788888888")
+    org.refresh_from_db()
+    donor.refresh_from_db()
 
     NotificationQuota.objects.update_or_create(
         organization=None,
@@ -87,8 +93,8 @@ def test_send_donor_invite_exception():
         organization=org, channel=NotificationQuota.Channel.SMS, daily_limit=10
     )
 
-    with patch("project_rokto.organizations.services.MiMSMSClient") as mock_client:
-        mock_client.return_value.send_sms.side_effect = Exception("Boom")
+    with patch("project_rokto.notifications.backends.MiMSMSBackend.send") as mock_send:
+        mock_send.side_effect = Exception("Boom")
         success, reason = send_donor_invite(donor.id, org.id)
         assert success is False
         assert reason == "Boom"
