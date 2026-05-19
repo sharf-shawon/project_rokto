@@ -14,6 +14,10 @@ from .models import phone_validator
 
 
 class UserUpdateForm(forms.ModelForm):
+    email = forms.EmailField(
+        required=False,
+        label=_("Email (optional)"),
+    )
     # Donor fields
     blood_group = forms.ChoiceField(
         choices=Donor.BloodGroup.choices,
@@ -70,7 +74,7 @@ class UserUpdateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["name"]
+        fields = ["name", "email"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

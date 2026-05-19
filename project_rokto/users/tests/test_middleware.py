@@ -10,25 +10,25 @@ from project_rokto.users.tests.factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 
-def test_middleware_redirects_unverified_user(client):
+def test_middleware_allows_own_profile_unverified(client):
+    """User should be able to access their own profile even if unverified."""
+    user = UserFactory(is_phone_verified=False)
+    client.force_login(user)
+
+    url = reverse("users:detail", kwargs={"username": user.username})
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
+
+
+def test_middleware_redirects_to_nid_on_protected_page(client):
+    """Unverified users should still be redirected on other protected pages."""
     user = UserFactory()
     client.force_login(user)
 
-    url = reverse("users:detail", kwargs={"username": user.username})
+    url = reverse("blood_requests:dashboard")
     response = client.get(url)
     assert response.status_code == HTTPStatus.FOUND
     assert response.url == reverse("users:nid_submission")
-
-
-def test_middleware_redirects_to_phone_after_nid_verified(client):
-    user = UserFactory(is_phone_verified=False)
-    NIDVerificationFactory(user=user, status=NIDVerification.Status.VERIFIED)
-    client.force_login(user)
-
-    url = reverse("users:detail", kwargs={"username": user.username})
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.FOUND
-    assert response.url == reverse("users:phone_add")
 
 
 def test_middleware_allows_verified_user(client):
