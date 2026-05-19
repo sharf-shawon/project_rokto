@@ -19,6 +19,7 @@ from django.views.generic import UpdateView
 
 from project_rokto.donors.models import Donor
 from project_rokto.notifications.services import UnifiedSMSService
+from project_rokto.users.forms import DonorRegistrationForm
 from project_rokto.users.forms import NIDSubmissionForm
 from project_rokto.users.forms import NotificationPreferenceForm
 from project_rokto.users.forms import OTPVerifyForm
@@ -89,6 +90,41 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
 
 user_update_view = UserUpdateView.as_view()
+
+
+class BecomeDonorView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
+    model = User
+    form_class = DonorRegistrationForm
+    template_name = "users/donor_registration.html"
+    success_message = _("Successfully registered as a blood donor!")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        existing_allergies = set()
+        existing_conditions = set()
+
+        for user in User.objects.all():
+            donor = getattr(user, "donor_profile", None)
+            if donor:
+                if donor.allergies:
+                    existing_allergies.update(donor.allergies)
+                if donor.health_conditions:
+                    existing_conditions.update(donor.health_conditions)
+
+        context["existing_allergies"] = sorted(existing_allergies)
+        context["existing_conditions"] = sorted(existing_conditions)
+        return context
+
+    def get_success_url(self) -> str:
+        assert self.request.user.is_authenticated  # type guard
+        return self.request.user.get_absolute_url()
+
+    def get_object(self, queryset: QuerySet | None = None) -> User:
+        assert self.request.user.is_authenticated  # type guard
+        return self.request.user
+
+
+become_donor_view = BecomeDonorView.as_view()
 
 
 class UserRedirectView(LoginRequiredMixin, RedirectView):

@@ -18,9 +18,9 @@ class UserUpdateForm(forms.ModelForm):
         required=False,
         label=_("Email (optional)"),
     )
-    # Donor fields
+    # Donor fields - Optional here
     blood_group = forms.ChoiceField(
-        choices=Donor.BloodGroup.choices,
+        choices=[("", _("Select Blood Group")), *Donor.BloodGroup.choices],
         required=False,
         label=_("Blood Group"),
     )
@@ -128,7 +128,12 @@ class UserUpdateForm(forms.ModelForm):
 
     def save(self, commit: bool = True):  # noqa: FBT001, FBT002
         user = super().save(commit=commit)
-        donor, _ = Donor.objects.get_or_create(user=user)
+        donor, created = Donor.objects.get_or_create(
+            user=user,
+            defaults={"phone_number": user.phone_number},
+        )
+        if not created:
+            donor.phone_number = user.phone_number
 
         donor.blood_group = self.cleaned_data.get("blood_group") or ""
         donor.date_of_birth = self.cleaned_data.get("date_of_birth")
@@ -147,6 +152,40 @@ class UserUpdateForm(forms.ModelForm):
                 donor.preferred_locations.set(pref_locations)
 
         return user
+
+
+class DonorRegistrationForm(UserUpdateForm):
+    """
+    Form for registering as a blood donor.
+    Fields like blood group and date of birth are mandatory here.
+    """
+
+    blood_group = forms.ChoiceField(
+        choices=[("", _("Select Blood Group")), *Donor.BloodGroup.choices],
+        required=True,
+        label=_("Blood Group"),
+    )
+    date_of_birth = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label=_("Date of Birth"),
+    )
+    preferred_locations = forms.ModelMultipleChoiceField(
+        queryset=Location.objects.none(),
+        required=True,
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "location-select",
+                "placeholder": _("Add locations..."),
+            },
+        ),
+        label=_("Preferred Blood Donation Locations"),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure name is also explicitly prominent if needed,
+        # but UserUpdateForm already has it in Meta.
 
 
 class UserAdminCreationForm(admin_forms.AdminUserCreationForm):

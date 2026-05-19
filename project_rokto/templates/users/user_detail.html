@@ -11,6 +11,28 @@
   <div class="container py-5">
     <div class="row justify-content-center">
       <div class="col-md-10 col-lg-8">
+        <!-- Section 0: Donor Registration Nudge -->
+        {% if object == request.user and not object.donor_profile.blood_group %}
+          <div class="card shadow-sm border-0 border-start border-danger border-5 mb-4 overflow-hidden">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center">
+                <div class="bg-danger text-white rounded-circle p-3 me-4">
+                  <i class="fas fa-hand-holding-heart fa-2x"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <h4 class="mb-1 text-danger fw-bold">{% trans "Become a Blood Donor" %}</h4>
+                  <p class="text-muted mb-3">
+                    {% trans "You haven't completed your donor profile yet. Registering as a donor helps us find you during emergencies and save lives." %}
+                  </p>
+                  <a href="{% url 'users:become_donor' %}"
+                     class="btn btn-danger px-4 shadow-sm">
+                    <i class="fas fa-check-circle me-2"></i>{% trans "Register Now" %}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
         <div class="card shadow-sm border-0 overflow-hidden">
           <div class="card-header bg-primary text-white py-4">
             <div class="d-flex align-items-center justify-content-between">
@@ -24,7 +46,7 @@
                 </div>
               </div>
               {% if object.donor_profile.blood_group %}
-                <div class="bg-danger text-white rounded px-3 py-2 text-center">
+                <div class="bg-danger text-white rounded px-3 py-2 text-center shadow-sm">
                   <div class="small text-uppercase opacity-75">{% trans "Blood" %}</div>
                   <div class="h3 mb-0 fw-bold">{{ object.donor_profile.blood_group }}</div>
                 </div>
@@ -49,21 +71,66 @@
                     <i class="fas fa-calendar-alt me-2 text-primary"></i>
                     <strong>{% trans "Date of Birth" %}:</strong> {{ object.donor_profile.date_of_birth|default:_("Not provided") }}
                   </li>
-                  <li class="mb-2">
-                    <i class="fas fa-check-circle me-2 {% if object.is_verified %}text-success{% else %}text-muted{% endif %}"></i>
-                    <strong>{% trans "Verification Status" %}:</strong>
-                    {% if object.is_verified %}
-                      <span class="badge bg-success">{% trans "Verified" %}</span>
-                    {% else %}
-                      <span class="badge bg-secondary">{% trans "No" %}</span>
-                      {% if object == request.user %}
-                        {% if object == request.user %}
-                          <a href="{% url 'users:nid_submission' %}" class="ms-2 small">{% trans "Verify Now" %}</a>
-                        {% endif %}
-                      {% endif %}
-                    {% endif %}
-                  </li>
                 </ul>
+                <h5 class="border-bottom pb-2 mb-3 mt-4 text-muted">{% trans "Verification Status" %}</h5>
+                <div class="d-flex flex-column gap-2">
+                  <!-- Phone Verification -->
+                  <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                    <span class="small fw-bold text-muted"><i class="fas fa-phone me-2"></i>{% trans "Phone" %}</span>
+                    {% if object.is_phone_verified %}
+                      <span class="badge bg-success"><i class="fas fa-check me-1"></i>{% trans "Verified" %}</span>
+                    {% else %}
+                      <div class="d-flex align-items-center">
+                        <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>{% trans "Not Verified" %}</span>
+                        {% if object == request.user %}
+                          <a href="{% url 'users:phone_add' %}"
+                             class="ms-2 small text-primary fw-bold">{% trans "Verify Now" %}</a>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <!-- NID Verification -->
+                  <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                    <span class="small fw-bold text-muted"><i class="fas fa-id-card me-2"></i>{% trans "NID" %}</span>
+                    {% if object.nid_verification.status == 'VERIFIED' %}
+                      <span class="badge bg-success"><i class="fas fa-check me-1"></i>{% trans "Verified" %}</span>
+                    {% elif object.nid_verification.status == 'PENDING' %}
+                      <span class="badge bg-info text-white"><i class="fas fa-clock me-1"></i>{% trans "Pending Review" %}</span>
+                    {% elif object.nid_verification.status == 'REJECTED' %}
+                      <div class="d-flex align-items-center">
+                        <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>{% trans "Rejected" %}</span>
+                        {% if object == request.user %}
+                          <a href="{% url 'users:nid_submission' %}"
+                             class="ms-2 small text-primary fw-bold">{% trans "Try Again" %}</a>
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary">{% trans "Not Submitted" %}</span>
+                        {% if object == request.user %}
+                          <a href="{% url 'users:nid_submission' %}"
+                             class="ms-2 small text-primary fw-bold">{% trans "Submit Now" %}</a>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <!-- Email Verification -->
+                  <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                    <span class="small fw-bold text-muted"><i class="fas fa-envelope me-2"></i>{% trans "Email" %}</span>
+                    {% if object.email %}
+                      {% comment %} Allauth email verification check logic if needed {% endcomment %}
+                      <span class="badge bg-success"><i class="fas fa-check me-1"></i>{% trans "Added" %}</span>
+                    {% else %}
+                      <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary">{% trans "Not Provided" %}</span>
+                        {% if object == request.user %}
+                          <a href="{% url 'account_email' %}"
+                             class="ms-2 small text-primary fw-bold">{% trans "Add Email" %}</a>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
               <!-- Donation Info -->
               <div class="col-md-6">
@@ -170,6 +237,11 @@
                 <a class="btn btn-primary px-4" href="{% url 'users:update' %}">
                   <i class="fas fa-edit me-2"></i>{% trans "Update Profile" %}
                 </a>
+                {% if not object.donor_profile.blood_group %}
+                  <a class="btn btn-danger px-4" href="{% url 'users:become_donor' %}">
+                    <i class="fas fa-heartbeat me-2"></i>{% trans "Become Donor" %}
+                  </a>
+                {% endif %}
                 <a class="btn btn-outline-primary px-4"
                    href="{% url 'users:phone_manage' %}">
                   <i class="fas fa-phone me-2"></i>{% trans "Manage Phone" %}

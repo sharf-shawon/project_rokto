@@ -4,7 +4,7 @@
 {% load i18n %}
 
 {% block title %}
-  {{ user.username }}
+  {% trans "Become a Blood Donor" %}
 {% endblock title %}
 {% block css %}
   {{ block.super }}
@@ -22,52 +22,53 @@
     <div class="row justify-content-center">
       <div class="col-md-10 col-lg-8">
         <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h2 class="mb-0 h4 text-primary">
-              <i class="fas fa-user-edit me-2"></i>{% trans "Update Profile" %}
-            </h2>
+          <div class="card-header bg-white py-4 border-bottom text-center">
+            <div class="bg-danger text-white rounded-circle d-inline-flex p-3 mb-3">
+              <i class="fas fa-heartbeat fa-2x"></i>
+            </div>
+            <h2 class="mb-1 h4 text-primary">{% trans "Become a Blood Donor" %}</h2>
+            <p class="text-muted mb-0 small">{% trans "Complete your profile to start saving lives today." %}</p>
           </div>
           <div class="card-body p-4">
-            <form method="post" action="{% url 'users:update' %}">
+            <form method="post" action="{% url 'users:become_donor' %}">
               {% csrf_token %}
               {{ form.non_field_errors }}
-              <!-- Section 1: Basic Information -->
+              <!-- Section 1: Donor Information -->
               <div class="mb-5">
                 <h5 class="border-bottom pb-2 mb-4 text-muted">
-                  <i class="fas fa-id-card me-2"></i>{% trans "Basic Information" %}
-                </h5>
-                <div class="row">
-                  <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
-                  <div class="col-md-6">{{ form.email|as_crispy_field }}</div>
-                </div>
-              </div>
-              <!-- Section 2: Health & Availability (Optional for non-donors) -->
-              <div class="mb-5">
-                <h5 class="border-bottom pb-2 mb-4 text-muted">
-                  <i class="fas fa-notes-medical me-2"></i>{% trans "Donor Information (Optional)" %}
+                  <i class="fas fa-id-card me-2"></i>{% trans "Required Information" %}
                 </h5>
                 <div class="row">
                   <div class="col-md-6">{{ form.blood_group|as_crispy_field }}</div>
                   <div class="col-md-6">{{ form.date_of_birth|as_crispy_field }}</div>
                 </div>
-                <div class="row mt-3">
+                <div class="mt-3">{{ form.preferred_locations|as_crispy_field }}</div>
+                <p class="small text-muted mt-2">
+                  <i class="fas fa-info-circle me-1"></i>
+                  {% trans "We need your blood group and date of birth to verify eligibility, and locations to find blood requests near you." %}
+                </p>
+              </div>
+              <!-- Section 2: Health & Availability -->
+              <div class="mb-5">
+                <h5 class="border-bottom pb-2 mb-4 text-muted">
+                  <i class="fas fa-notes-medical me-2"></i>{% trans "Health & Availability" %}
+                </h5>
+                <div class="row">
                   <div class="col-md-6">
                     <div class="form-check form-switch">{{ form.is_available_to_donate|as_crispy_field }}</div>
                   </div>
                   <div class="col-md-6">{{ form.last_donation_date|as_crispy_field }}</div>
                 </div>
                 <div class="row mt-3">
-                  <div class="col-md-6">{{ form.resume_donation_date|as_crispy_field }}</div>
-                </div>
-                <div class="row mt-3">
                   <div class="col-md-6">{{ form.allergies|as_crispy_field }}</div>
                   <div class="col-md-6">{{ form.health_conditions|as_crispy_field }}</div>
                 </div>
-                <div class="mt-3">{{ form.preferred_locations|as_crispy_field }}</div>
               </div>
               <div class="d-grid gap-2 mt-4">
-                <button type="submit" class="btn btn-primary btn-lg">{% trans "Save Changes" %}</button>
-                <a href="{{ user.get_absolute_url }}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                <button type="submit" class="btn btn-danger btn-lg">
+                  <i class="fas fa-check-circle me-2"></i>{% trans "Complete Registration" %}
+                </button>
+                <a href="{{ user.get_absolute_url }}" class="btn btn-outline-secondary">{% trans "I'll do this later" %}</a>
               </div>
             </form>
           </div>
