@@ -10,7 +10,7 @@ class VerificationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if not request.user.is_authenticated:
+        if not request.user.is_authenticated or request.user.is_superuser:
             return self.get_response(request)
 
         path = request.path
@@ -22,6 +22,7 @@ class VerificationMiddleware:
             reverse("users:nid_submission"),
             reverse("users:phone_add"),
             reverse("users:phone_verify_otp"),
+            reverse("users:detail", kwargs={"username": request.user.username}),
         ]
 
         # Prefix matches for exemption

@@ -74,12 +74,12 @@
                   {% if ACCOUNT_ALLOW_REGISTRATION %}
                     <li class="nav-item">
                       {# URL provided by django-allauth/account/urls.py #}
-                      <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
+                      <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Email Sign Up" %}</a>
                     </li>
                   {% endif %}
                   <li class="nav-item">
                     {# URL provided by django-allauth/account/urls.py #}
-                    <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
+                    <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Email Sign In" %}</a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" href="{% url 'users:phone_login' %}">{% translate "Phone Sign In / Up" %}</a>

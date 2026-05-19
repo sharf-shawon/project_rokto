@@ -51,13 +51,15 @@
                   </li>
                   <li class="mb-2">
                     <i class="fas fa-check-circle me-2 {% if object.is_verified %}text-success{% else %}text-muted{% endif %}"></i>
-                    <strong>{% trans "Verified" %}:</strong>
+                    <strong>{% trans "Verification Status" %}:</strong>
                     {% if object.is_verified %}
-                      <span class="badge bg-success">{% trans "Yes" %}</span>
+                      <span class="badge bg-success">{% trans "Verified" %}</span>
                     {% else %}
                       <span class="badge bg-secondary">{% trans "No" %}</span>
                       {% if object == request.user %}
-                        <a href="{% url 'users:nid_submission' %}" class="ms-2 small">{% trans "Verify Now" %}</a>
+                        {% if object == request.user %}
+                          <a href="{% url 'users:nid_submission' %}" class="ms-2 small">{% trans "Verify Now" %}</a>
+                        {% endif %}
                       {% endif %}
                     {% endif %}
                   </li>
@@ -143,6 +145,27 @@
               </div>
             </div>
             {% if object == request.user %}
+              {% if not object.email or not object.has_usable_password %}
+                <div class="alert alert-warning mt-4 shadow-sm" role="alert">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                    <div>
+                      <h5 class="alert-heading mb-1">{% trans "Secure Your Account" %}</h5>
+                      <p class="mb-0 small">
+                        {% trans "You haven't set an email or password yet. Add them now to ensure you can always recover your account if you lose your phone." %}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-end">
+                    {% if not object.email %}
+                      <a href="{% url 'account_email' %}" class="btn btn-sm btn-warning me-2">{% trans "Add Email" %}</a>
+                    {% endif %}
+                    {% if not object.has_usable_password %}
+                      <a href="{% url 'account_set_password' %}" class="btn btn-sm btn-dark">{% trans "Set Password" %}</a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
               <div class="mt-5 d-flex flex-wrap gap-2 justify-content-center border-top pt-4">
                 <a class="btn btn-primary px-4" href="{% url 'users:update' %}">
                   <i class="fas fa-edit me-2"></i>{% trans "Update Profile" %}
