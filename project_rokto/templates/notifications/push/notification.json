@@ -1,0 +1,5 @@
+{
+    "title": "Project Rokto Notification",
+    "body": "{{ message }}",
+    "url": "/"
+}

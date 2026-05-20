@@ -119,36 +119,3 @@ class NotificationQuota(models.Model):
     def __str__(self):
         org_name = self.organization.name if self.organization else "GLOBAL"
         return f"{org_name} - {self.channel} Quota"
-
-
-class NotificationLog(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="notification_logs",
-    )
-    donor = models.ForeignKey(
-        "donors.Donor",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="notification_logs",
-    )
-    channel = models.CharField(
-        _("Channel"),
-        max_length=10,
-        choices=NotificationQuota.Channel.choices,
-    )
-    status = models.CharField(_("Status"), max_length=50)  # SENT, FAILED, BLOCKED
-    failure_reason = models.TextField(_("Failure Reason"), blank=True)
-    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
-
-    class Meta:
-        verbose_name = _("Notification Log")
-        verbose_name_plural = _("Notification Logs")
-
-    def __str__(self):
-        return f"{self.channel} to {self.donor} - {self.status}"

@@ -84,7 +84,7 @@ class ProjectRoktoAdminSite(UnfoldAdminSite):
                     {
                         "title": _("Notification Logs"),
                         "icon": "notifications",
-                        "link": "admin:organizations_notificationlog_changelist",
+                        "link": "admin:notifications_notificationlog_changelist",
                     },
                     {
                         "title": _("Notification Quotas"),

@@ -3,7 +3,7 @@ import secrets
 
 from django.utils import timezone
 
-from project_rokto.notifications.services import UnifiedSMSService
+from project_rokto.notifications.services import UnifiedNotificationService
 
 from .models import OTPRequest
 
@@ -26,11 +26,11 @@ class SMSAuthenticator:
             otp_code=otp_code,
             expires_at=timezone.now() + datetime.timedelta(minutes=5),
         )
-        # Send the OTP via the unified SMS service
-        success, _ = UnifiedSMSService.send_otp(
+        # Send the OTP via the unified notification service
+        success, _ = UnifiedNotificationService.send_otp(
             phone_number=self.user.phone_number,
             otp_code=otp_code,
-            related_user=self.user,
+            donor=getattr(self.user, "donor_profile", None),
         )
         return success
 

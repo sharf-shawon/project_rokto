@@ -97,3 +97,56 @@ class ShortURL(models.Model):
     @property
     def is_expired(self) -> bool:
         return self.expires_at is not None and self.expires_at < timezone.now()
+
+
+class NotificationLog(models.Model):
+    """Universal audit log for all system notifications (SMS, Email, WebPush)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_logs",
+    )
+    donor = models.ForeignKey(
+        "donors.Donor",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_logs",
+    )
+    channel = models.CharField(
+        _("Channel"),
+        max_length=10,
+        choices=[
+            ("SMS", _("SMS")),
+            ("EMAIL", _("Email")),
+            ("WEBPUSH", _("WebPush")),
+        ],
+    )
+    category = models.CharField(
+        _("Category"),
+        max_length=10,
+        choices=SMSLog.Category.choices,
+        default=SMSLog.Category.OTHER,
+        db_index=True,
+    )
+    status = models.CharField(
+        _("Status"),
+        max_length=50,
+        choices=SMSLog.Status.choices,
+        default=SMSLog.Status.SENT,
+    )
+    failure_reason = models.TextField(_("Failure Reason"), blank=True)
+    metadata = models.JSONField(_("Metadata"), null=True, blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = _("Notification Log")
+        verbose_name_plural = _("Notification Logs")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.channel} ({self.category}) to {self.donor} - {self.status}"

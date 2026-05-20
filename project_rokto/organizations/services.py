@@ -7,7 +7,6 @@ from typing import cast
 from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import EmailMultiAlternatives
-from django.db import models
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from pywebpush import WebPushException
@@ -16,10 +15,9 @@ from pywebpush import webpush
 from project_rokto.donors.models import Donor
 from project_rokto.donors.models import OrganizationDonorData
 from project_rokto.notifications.models import SMSLog
-from project_rokto.notifications.services import UnifiedSMSService
+from project_rokto.notifications.services import UnifiedNotificationService
 from project_rokto.users.models import NotificationPreference
 
-from .models import NotificationLog
 from .models import NotificationQuota
 
 # HTTP 410 Gone indicates that the subscription has expired or is no longer valid.
@@ -66,44 +64,6 @@ class QuotaService:
             and quota.current_weekly_usage < quota.weekly_limit
             and quota.current_monthly_usage < quota.monthly_limit
         )
-
-    @staticmethod
-    def log_notification(organization, donor, channel, status, reason=""):
-        """
-        Logs a notification, updates usage counters, and sets cool-off.
-        """
-        NotificationLog.objects.create(
-            organization=organization,
-            donor=donor,
-            channel=channel,
-            status=status,
-            failure_reason=reason,
-        )
-
-        if status == "SENT":
-            # 1. Set Cool-off in Redis (24 hours)
-            if donor and donor.phone_number:
-                cache_key = f"cooloff:{donor.phone_number}:{channel}"
-                is_active = True
-                cache.set(cache_key, is_active, timeout=86400)
-
-            # 2. Update Global Quota
-            NotificationQuota.objects.filter(
-                organization__isnull=True, channel=channel
-            ).update(
-                current_daily_usage=models.F("current_daily_usage") + 1,
-                current_weekly_usage=models.F("current_weekly_usage") + 1,
-                current_monthly_usage=models.F("current_monthly_usage") + 1,
-            )
-            # 3. Update Org Quota
-            if organization:
-                NotificationQuota.objects.filter(
-                    organization=organization, channel=channel
-                ).update(
-                    current_daily_usage=models.F("current_daily_usage") + 1,
-                    current_weekly_usage=models.F("current_weekly_usage") + 1,
-                    current_monthly_usage=models.F("current_monthly_usage") + 1,
-                )
 
 
 class DonorImportService:
@@ -167,70 +127,65 @@ class DonorImportService:
 
 
 class NotificationDispatcher:
+    """
+    Main entry point for sending notifications.
+    Routes to enabled channels based on user preferences and priority.
+    """
+
     @staticmethod
     def send(
         recipient_user, template_name, context, organization=None, priority="NORMAL"
     ):
         """
-        Main entry point for sending notifications.
-        Routes to enabled channels based on user preferences and priority.
+        Routes a notification to appropriate channels based on user preferences.
         """
-        # Delay imports to avoid circular dependency
+
+        # 1. Get user preferences and determine category/flags
+        prefs, _ = NotificationPreference.objects.get_or_create(user=recipient_user)
+        donor = getattr(recipient_user, "donor_profile", None)
+
+        config = {
+            "emergency": "emergency_alerts",
+            "invite": "org_invites",
+        }
+
+        type_flag = config.get(
+            next((k for k in config if k in template_name), "other"), "reminders"
+        )
+
+        # If user has disabled this type of alert globally, stop here
+        if not getattr(prefs, type_flag, False):
+            return
+
+        # 2. Dispatch to enabled channels via tasks
+
         from .tasks import send_email_task  # noqa: PLC0415
         from .tasks import send_push_task  # noqa: PLC0415
         from .tasks import send_sms_task  # noqa: PLC0415
 
-        # 1. Get user preferences
-        prefs, _ = NotificationPreference.objects.get_or_create(user=recipient_user)
+        channels = [
+            ("SMS", "sms_enabled", send_sms_task),
+            ("EMAIL", "email_enabled", send_email_task),
+            ("WEBPUSH", "web_push_enabled", send_push_task),
+        ]
 
-        donor = getattr(recipient_user, "donor_profile", None)
-        donor_id = donor.id if donor else None
-
-        # 2. Determine channels based on type (mapped from template_name)
-        # Emergency Alerts
-        if "emergency" in template_name:
-            if prefs.sms_enabled and prefs.emergency_alerts:
-                send_sms_task.delay(
-                    recipient_user.id,
-                    template_name,
-                    context,
-                    organization.id if organization else None,
-                    donor_id=donor_id,
-                )
-            if prefs.web_push_enabled and prefs.emergency_alerts:
-                send_push_task.delay(
-                    recipient_user.id, template_name, context, donor_id=donor_id
-                )
-            if prefs.email_enabled and prefs.emergency_alerts:
-                send_email_task.delay(
-                    recipient_user.id, template_name, context, donor_id=donor_id
-                )
-
-        # Org Invites
-        elif "invite" in template_name:
-            if prefs.sms_enabled and prefs.org_invites:
-                send_sms_task.delay(
-                    recipient_user.id,
-                    template_name,
-                    context,
-                    organization.id if organization else None,
-                    donor_id=donor_id,
-                )
-            if prefs.email_enabled and prefs.org_invites:
-                send_email_task.delay(
-                    recipient_user.id, template_name, context, donor_id=donor_id
-                )
-
-        # Reminders / Others
-        else:
-            if prefs.web_push_enabled and prefs.reminders:
-                send_push_task.delay(
-                    recipient_user.id, template_name, context, donor_id=donor_id
-                )
-            if prefs.email_enabled and prefs.reminders:
-                send_email_task.delay(
-                    recipient_user.id, template_name, context, donor_id=donor_id
-                )
+        for channel_name, channel_flag, task in channels:
+            if getattr(prefs, channel_flag):
+                if channel_name == "SMS":
+                    task.delay(
+                        recipient_user.id,
+                        template_name,
+                        context,
+                        organization.id if organization else None,
+                        donor.id if donor else None,
+                    )
+                else:
+                    task.delay(
+                        recipient_user.id,
+                        template_name,
+                        context,
+                        donor.id if donor else None,
+                    )
 
 
 class EmailService:
@@ -247,9 +202,6 @@ class EmailService:
         )
         msg.attach_alternative(html_content, "text/html")
         msg.send()
-
-        if donor:
-            QuotaService.log_notification(None, donor, "EMAIL", "SENT")
 
 
 class SMSService:
@@ -281,9 +233,8 @@ class SMSService:
         else:
             category = SMSLog.Category.OTHER
 
-        # Legacy quota checks (maintained for backward compatibility)
+        # Quota checks
         actual_donor = donor or getattr(user, "donor_profile", None)
-
         can_send, reason = QuotaService.can_send_notification(
             organization,
             actual_donor,
@@ -291,37 +242,24 @@ class SMSService:
         )
 
         if not can_send:
-            QuotaService.log_notification(
-                organization,
-                actual_donor,
-                NotificationQuota.Channel.SMS,
-                "BLOCKED",
-                reason,
+            UnifiedNotificationService.log_failure(
+                channel="SMS",
+                category=category,
+                donor=actual_donor,
+                organization=organization,
+                reason=reason,
             )
             return False, reason
 
-        # ignore SLF001 for this
-
-        related_user = user if user.pk is not None and not user._state.adding else None  # noqa: SLF001
-        # Use UnifiedSMSService for the actual send
-        success, msg = UnifiedSMSService.send(
+        # Use UnifiedNotificationService for the actual send
+        return UnifiedNotificationService.send(
+            channel="SMS",
             phone_number=str(user.phone_number),
             message=message,
             category=category,
-            related_user=related_user,
-            related_organization=organization,
+            donor=actual_donor,
+            organization=organization,
         )
-
-        # Legacy logging (NotificationLog) - maintained for backward compat
-        if actual_donor:
-            if success:
-                QuotaService.log_notification(organization, actual_donor, "SMS", "SENT")
-            else:
-                QuotaService.log_notification(
-                    organization, actual_donor, "SMS", "FAILED", msg
-                )
-
-        return success, msg
 
 
 class WebPushService:
@@ -332,7 +270,7 @@ class WebPushService:
         )
 
         # Ensure we have a donor object for logging
-        actual_donor = donor or getattr(user, "donor_profile", None)
+        donor or getattr(user, "donor_profile", None)
 
         subscriptions = user.web_push_subscriptions.all()
         for sub in subscriptions:
@@ -346,8 +284,6 @@ class WebPushService:
                     vapid_private_key=settings.VAPID_PRIVATE_KEY,
                     vapid_claims={"sub": f"mailto:{settings.DEFAULT_FROM_EMAIL}"},
                 )
-                if actual_donor:
-                    QuotaService.log_notification(None, actual_donor, "WEBPUSH", "SENT")
             except WebPushException as ex:
                 if ex.response and ex.response.status_code == HTTP_410_GONE:
                     # Subscription has expired or is no longer valid

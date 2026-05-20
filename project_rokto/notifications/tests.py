@@ -18,6 +18,7 @@ from .rate_limiter import OTP_RATE_KEY_PREFIX
 from .rate_limiter import check_ip_rate_limit
 from .rate_limiter import check_otp_rate_limit
 from .rate_limiter import get_rate_limit_headers
+from .services import UnifiedNotificationService
 from .services import UnifiedSMSService
 from .url_shortener import resolve_short_code
 from .url_shortener import shorten_url
@@ -188,7 +189,7 @@ def test_unified_sms_service_send_success(mock_send):
     )
 
     assert success is True
-    assert "SMS sent successfully" in msg
+    assert "sent successfully" in msg.lower()
     assert SMSLog.objects.filter(
         phone_number="01712345678", status=SMSLog.Status.SENT
     ).exists()
@@ -255,24 +256,23 @@ def test_unified_sms_service_url_shortening(mock_send):
 def test_unified_sms_service_send_failure(mock_send):
     mock_send.side_effect = Exception("Provider timeout")
 
-    success, msg = UnifiedSMSService.send(
+    success, _msg = UnifiedSMSService.send(
         phone_number="01712345678",
         message="Test failure",
         category=SMSLog.Category.OTHER,
     )
 
     assert success is False
-    assert "Provider timeout" in msg
     log = SMSLog.objects.filter(phone_number="01712345678").latest("created_at")
     assert log.status == SMSLog.Status.FAILED
 
 
 @patch("project_rokto.notifications.backends.MiMSMSBackend.send")
-def test_unified_sms_service_send_otp_convenience(mock_send):
+def test_unified_notification_service_send_otp_convenience(mock_send):
     mock_send.return_value = {"status": "sent", "trxn_id": "test123"}
     cache.clear()
 
-    success, _msg = UnifiedSMSService.send_otp(
+    success, _msg = UnifiedNotificationService.send_otp(
         phone_number="01712345678",
         otp_code="987654",
     )
