@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import factory
+
 # mypy: ignore-errors
 from django.contrib.gis.geos import Point
 from factory import Faker
@@ -28,10 +30,10 @@ class LocationFactory(DjangoModelFactory[Location]):
 
 
 class UserFactory(DjangoModelFactory[User]):
-    username = Faker("user_name")
-    email = Faker("email")
+    username = factory.Sequence(lambda n: f"user{n}")
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
     name = Faker("name")
-    phone_number = Faker("numerify", text="017########")
+    phone_number = factory.Sequence(lambda n: f"017{n:08d}")
     is_phone_verified = False
 
     @classmethod
