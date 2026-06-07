@@ -1,0 +1,37 @@
+volumes:
+  production_postgres_data:
+  production_postgres_data_backups:
+
+services:
+  django:
+    build:
+      context: .
+      dockerfile: ./compose/production/django/Dockerfile
+      args:
+        # These variable can be defined in an .env file in the root of the repo
+        DJANGO_AWS_STORAGE_BUCKET_NAME: ${DJANGO_AWS_STORAGE_BUCKET_NAME}
+        DJANGO_AWS_S3_CUSTOM_DOMAIN: ${DJANGO_AWS_S3_CUSTOM_DOMAIN}
+
+    image: project_rokto_production_django
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./.envs/.production/.django
+      - ./.envs/.production/.postgres
+      - ./.envs/.local/.mimsms
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: project_rokto_production_postgres
+    volumes:
+      - production_postgres_data:/var/lib/postgresql/18/docker
+      - production_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.production/.postgres
+
+  redis:
+    image: docker.io/redis:8.6

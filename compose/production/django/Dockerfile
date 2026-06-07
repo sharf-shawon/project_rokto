@@ -24,10 +24,16 @@ WORKDIR ${APP_HOME}
 RUN apt-get update && apt-get install --no-install-recommends -y \
   # dependencies for building Python packages
   build-essential \
+  # git for fetching dependencies from git repositories
+  git \
+  # ca-certificates for verifying SSL certificates during git fetch
+  ca-certificates \
   # psycopg dependencies
   libpq-dev \
   # GeoDjango dependencies
-  binutils libproj-dev gdal-bin libgdal-dev
+  binutils libproj-dev gdal-bin libgdal-dev \
+  # cleaning up unused files
+  && rm -rf /var/lib/apt/lists/*
 
 
 # Requirements are installed here to ensure they will be cached.
@@ -56,6 +62,8 @@ RUN addgroup --system django \
 
 # Install required system dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
+  # ca-certificates for verifying SSL certificates for outbound HTTPS calls
+  ca-certificates \
   # psycopg dependencies
   libpq-dev \
   # GeoDjango dependencies
