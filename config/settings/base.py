@@ -73,16 +73,6 @@ ROOT_URLCONF = "config.urls"
 # https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
 WSGI_APPLICATION = "config.wsgi.application"
 
-# UNFOLD
-# ------------------------------------------------------------------------------
-UNFOLD = {
-    "SITE_TITLE": "Project Rokto Admin",
-    "SITE_HEADER": "Project Rokto",
-    "SITE_SYMBOL": "bloodtype",  # Material Symbols
-    "SHOW_HISTORY": True,
-    "SHOW_VIEW_ON_SITE": True,
-}
-
 # APPS
 # ------------------------------------------------------------------------------
 UNFOLD_APPS = [
