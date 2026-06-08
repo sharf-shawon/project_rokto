@@ -43,7 +43,7 @@ dependencies = [
   "pyjwt==2.13.0",
   "python-slugify==8.0.4",
   "pywebpush>=2.3.0",
-  "redis==7.4.0",
+  "redis==8.0.0",
   "requests==2.34.2",
 ]
 
