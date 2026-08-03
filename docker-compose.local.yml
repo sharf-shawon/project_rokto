@@ -98,7 +98,7 @@ services:
       - ./.envs/.local/.postgres
 
   redis:
-    image: docker.io/redis:8.8
+    image: docker.io/redis:8.10
     container_name: project_rokto_local_redis
 
   node:
